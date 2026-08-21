@@ -1517,86 +1517,71 @@ function parseGvizTextToRows(gvizText) {
 
   if (!data.table || !data.table.rows) return [];
 
-  // อ่านชื่อคอลัมน์ (หัวตาราง) จาก cols หรือจาก row แรก
-  const colLabels = (data.table.cols || []).map(c => (c ? (c.label || c.id || '').trim() : ''));
-  
   const rows = [];
-  data.table.rows.forEach(r => {
+  data.table.rows.forEach((r, rowIdx) => {
     if (!r || !r.c) return;
-    const rowObj = {};
-    let hasValue = false;
+    
+    const getCellVal = (cIdx) => {
+      if (cIdx < r.c.length && r.c[cIdx]) {
+        if (r.c[cIdx].v !== null && r.c[cIdx].v !== undefined) return r.c[cIdx].v;
+        if (r.c[cIdx].f !== null && r.c[cIdx].f !== undefined) return r.c[cIdx].f;
+      }
+      return '';
+    };
 
-    r.c.forEach((cell, idx) => {
-      const colName = colLabels[idx] || `Col_${idx}`;
-      const val = cell ? (cell.v !== null && cell.v !== undefined ? cell.v : (cell.f || '')) : '';
-      rowObj[colName] = val;
-      if (val !== '') hasValue = true;
-    });
+    // ดึงค่าตามลำดับคอลัมน์มาตรฐานของชีต (Col A ถึง P)
+    const rawYr = getCellVal(0);
+    const yr = rawYr ? String(parseInt(rawYr) || rawYr).trim() : '2026';
+    
+    let mo = String(getCellVal(1) || 'JAN').toUpperCase().trim();
+    if (mo.length > 3) mo = mo.slice(0, 3);
 
-    if (hasValue) rows.push(rowObj);
+    const po = String(getCellVal(2) || `PO-${rowIdx + 1}`).trim();
+    const supp = String(getCellVal(3) || 'ไม่ระบุ').trim();
+    const desc = String(getCellVal(4) || '').trim();
+    
+    const qty = parseFloat(getCellVal(5) || 0) || 0;
+    const unit = String(getCellVal(6) || 'EA').trim();
+    const minPrice = parseFloat(getCellVal(7) || 0) || 0;
+    
+    let totalPrice = parseFloat(getCellVal(8) || 0) || 0;
+    if (totalPrice === 0 && qty > 0 && minPrice > 0) totalPrice = qty * minPrice;
+
+    const negPrice = parseFloat(getCellVal(9) || minPrice) || minPrice;
+    let unitDiff = parseFloat(getCellVal(10) || (minPrice - negPrice)) || 0;
+    let totalSaving = parseFloat(getCellVal(11) || (unitDiff * qty)) || 0;
+
+    const pctDisc = parseFloat(getCellVal(12) || (totalPrice > 0 ? totalSaving / totalPrice : 0)) || 0;
+    const method = String(getCellVal(13) || 'Negotiate').trim();
+    const pic = String(getCellVal(14) || 'ไม่ระบุ').trim();
+    const remark = String(getCellVal(15) || '').trim();
+
+    if (po || supp !== 'ไม่ระบุ' || totalPrice > 0 || totalSaving > 0) {
+      rows.push({
+        id: `gs-${rowIdx + 1}`,
+        globalId: `gs-${rowIdx + 1}`,
+        year: yr,
+        month: mo,
+        poNo: po,
+        supplier: supp,
+        description: desc,
+        qty: qty,
+        unit: unit,
+        minUnitPrice: minPrice,
+        totalPrice: totalPrice,
+        negotiatedUnitPrice: negPrice,
+        unitDifference: unitDiff,
+        totalSaving: totalSaving,
+        percentDiscount: pctDisc,
+        strategy: method,
+        method: method,
+        pic: pic,
+        remark: remark
+      });
+    }
   });
 
   return rows;
-}
-
-// แปลงแถวจาก Sheet ให้เป็นโครงสร้างมาตรฐานของระบบ
-function normalizeSheetRow(r, idx, sourceSheet) {
-  const getVal = (...keys) => {
-    for (const k of keys) {
-      if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return r[k];
-      // ตรวจสอบแบบ case-insensitive
-      const foundKey = Object.keys(r).find(x => x.toLowerCase().trim() === k.toLowerCase().trim());
-      if (foundKey && r[foundKey] !== undefined && r[foundKey] !== null && String(r[foundKey]).trim() !== '') {
-        return r[foundKey];
-      }
-    }
-    return '';
-  };
-
-  const yr = String(getVal('Year', 'year', 'ปี', 'พ.ศ.') || '2026');
-  let mo = String(getVal('Month', 'month', 'เดือน') || 'JAN').toUpperCase().trim();
-  if (mo.length > 3) mo = mo.slice(0, 3);
-
-  const po = String(getVal('PO No.', 'PO No', 'poNo', 'PO', 'เลขที่ PO', 'เลขที่ใบสั่งซื้อ') || `PO-${idx + 1}`).trim();
-  const supp = String(getVal('Supplier', 'supplier', 'ซัพพลายเออร์', 'ชื่อคู่ค้า', 'ผู้ขาย') || 'ไม่ระบุ').trim();
-  const desc = String(getVal('Item Description', 'description', 'รายละเอียดสินค้า/บริการ', 'รายละเอียด') || '').trim();
-  
-  const qty = parseFloat(getVal('Qty', 'qty', 'จำนวน', 'ปริมาณ') || 0) || 0;
-  const unit = String(getVal('Unit', 'unit', 'หน่วย', 'หน่วยนับ') || 'EA').trim();
-  const minPrice = parseFloat(getVal('Min Unit Price', 'minUnitPrice', 'ราคาต่อหน่วยเดิม', 'ราคาต่อหน่วย') || 0) || 0;
-  
-  let totalPrice = parseFloat(getVal('Total Price', 'totalPrice', 'ราคารวม (บาท)', 'ราคารวม') || 0) || 0;
-  if (totalPrice === 0 && qty > 0 && minPrice > 0) totalPrice = qty * minPrice;
-
-  const negPrice = parseFloat(getVal('Negotiated Unit Price', 'negotiatedUnitPrice', 'ราคาที่ต่อรองได้') || minPrice) || minPrice;
-  
-  let unitDiff = parseFloat(getVal('Unit Difference', 'unitDifference', 'ผลต่างต่อหน่วย') || (minPrice - negPrice)) || 0;
-  let totalSaving = parseFloat(getVal('Total Saving', 'totalSaving', 'รวมที่ต่อรองได้ (บาท)', 'รวมที่ต่อรองได้', 'ยอดลดต้นทุน') || (unitDiff * qty)) || 0;
-
-  const pctDisc = totalPrice > 0 ? (totalSaving / totalPrice) : 0;
-  const method = String(getVal('Method', 'method', 'กลยุทธ์', 'วิธีการ', 'Strategy') || 'Negotiate').trim();
-  const pic = String(getVal('PIC', 'pic', 'ผู้รับผิดชอบ', 'ผู้จัดซื้อ') || 'ไม่ระบุ').trim();
-
-  return {
-    id: `${sourceSheet}-${idx + 1}`,
-    globalId: `${sourceSheet}-${idx + 1}`,
-    year: yr,
-    month: mo,
-    poNo: po,
-    supplier: supp,
-    description: desc,
-    qty: qty,
-    unit: unit,
-    minUnitPrice: minPrice,
-    totalPrice: totalPrice,
-    negotiatedUnitPrice: negPrice,
-    unitDifference: unitDiff,
-    totalSaving: totalSaving,
-    percentDiscount: pctDisc,
-    strategy: method,
-    method: method,
-    pic: pic
-  };
 }
 
 window.syncGoogleSheetNow = async function(showAlert = true) {
@@ -1622,59 +1607,18 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
 
   try {
     let allTransactions = [];
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${gid ? '&gid=' + gid : ''}`;
     
-    // รายชื่อแท็บที่ต้องการดึงข้อมูล
-    const targetTabs = gid ? [`gid=${gid}`] : ['sheet=Data', 'sheet=Improve%231', ''];
-    let successCount = 0;
-    let lastError = null;
-
-    for (const tabParam of targetTabs) {
-      const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&${tabParam}`;
-      try {
-        const res = await fetch(gvizUrl);
-        if (!res.ok) continue;
-        const text = await res.text();
-        const rows = parseGvizTextToRows(text);
-
-        if (rows && rows.length > 0) {
-          const tabName = tabParam ? tabParam.replace('sheet=', '').replace('gid=', 'gid_') : 'Main';
-          rows.forEach((r, idx) => {
-            const tx = normalizeSheetRow(r, idx, tabName);
-            // ตรวจสอบว่าไม่ใช่แถวว่าง
-            if (tx.poNo || tx.supplier !== 'ไม่ระบุ' || tx.totalPrice > 0 || tx.totalSaving > 0) {
-              allTransactions.push(tx);
-            }
-          });
-          successCount++;
-        }
-      } catch (err) {
-        lastError = err;
-      }
+    const res = await fetch(gvizUrl);
+    if (!res.ok) {
+      throw new Error(`ไม่สามารถเชื่อมต่อ Google Sheet ได้ (Status: ${res.status}).\nกรุณาตรวจสอบว่า Google Sheet ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู"`);
     }
 
-    // หาก GViz ดึงไม่สำเร็จ ลองดาวน์โหลดผ่าน CSV Export
-    if (allTransactions.length === 0) {
-      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-      const res = await fetch(csvUrl);
-      if (!res.ok) {
-        throw new Error(lastError ? lastError.message : `ไม่สามารถเชื่อมต่อได้ (Status: ${res.status}). กรุณาตรวจสอบว่า Google Sheet ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู"`);
-      }
-      const csvText = await res.text();
-      if (typeof XLSX !== 'undefined') {
-        const wb = XLSX.read(csvText, { type: 'string' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws);
-        rows.forEach((r, idx) => {
-          const tx = normalizeSheetRow(r, idx, 'CSV');
-          if (tx.poNo || tx.supplier !== 'ไม่ระบุ' || tx.totalPrice > 0 || tx.totalSaving > 0) {
-            allTransactions.push(tx);
-          }
-        });
-      }
-    }
+    const text = await res.text();
+    allTransactions = parseGvizTextToRows(text);
 
     if (allTransactions.length === 0) {
-      throw new Error('ไม่พบข้อมูลรายการสั่งซื้อใน Google Sheet\nโปรดตรวจสอบว่าเปิดสิทธิ์แชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู (Anyone with the link can view)" แล้วหรือยัง');
+      throw new Error('ไม่พบข้อมูลรายการสั่งซื้อใน Google Sheet');
     }
 
     // อัปเดตข้อมูลในระบบแบบ Real-time
