@@ -1491,8 +1491,6 @@ function extractGoogleSheetId(input) {
 
 window.syncGoogleSheetNow = async function(showAlert = true) {
   const urlInput = document.getElementById('gsheet-url-input')?.value.trim() || '';
-  const sheetName = document.getElementById('gsheet-sheet-name')?.value.trim() || 'Data';
-  const apiKey = document.getElementById('gsheet-api-key')?.value.trim() || '';
   const autoSync = document.getElementById('gsheet-auto-sync')?.checked ?? true;
 
   const sheetId = extractGoogleSheetId(urlInput);
@@ -1510,88 +1508,85 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
 
   if (syncBtn) syncBtn.disabled = true;
   if (topbarLabel) topbarLabel.textContent = 'กำลังซิงค์...';
-  if (badge) badge.textContent = '⏳ กำลังดึงข้อมูล...';
+  if (badge) badge.textContent = '⏳ กำลังดึงข้อมูลทั้งหมด...';
 
   try {
-    let rows = [];
+    // 1. ดาวน์โหลดทั้ง Workbook ทุก Sheet ในรูปแบบ .xlsx
+    const xlsxUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+    const res = await fetch(xlsxUrl);
+    
+    if (!res.ok) {
+      throw new Error(`ไม่สามารถเข้าถึง Google Sheet ได้ (Status: ${res.status})\nโปรดตรวจสอบว่าเปิดสิทธิ์แชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู" แล้วหรือยัง`);
+    }
 
-    if (apiKey) {
-      // 1. ดึงผ่าน Google Sheets API v4
-      const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}`;
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error(`Google API Error: ${res.status} ${res.statusText}`);
-      const json = await res.json();
-      const rawValues = json.values || [];
-      if (rawValues.length < 2) throw new Error('ไม่พบข้อมูลใน Sheet ที่ระบุ');
+    const arrayBuffer = await res.arrayBuffer();
+    if (typeof XLSX === 'undefined') {
+      throw new Error('SheetJS library is not loaded');
+    }
 
-      const headers = rawValues[0].map(h => String(h || '').trim());
-      rows = rawValues.slice(1).map(r => {
-        const obj = {};
-        headers.forEach((h, idx) => { obj[h] = r[idx] ?? ''; });
-        return obj;
-      });
-    } else {
-      // 2. ดึงผ่าน Google Visualization / CSV Export (สำหรับชีตที่เปิดสิทธิ์ดูได้)
-      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-      const res = await fetch(csvUrl);
-      if (!res.ok) throw new Error(`ไม่สามารถเข้าถึง Google Sheet ได้ (โปรดตรวจสอบการเปิดสิทธิ์แชร์แบบดูได้)`);
-      const csvText = await res.text();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    console.log('📑 Loaded Sheets from Google Sheets:', workbook.SheetNames);
 
-      if (typeof XLSX !== 'undefined') {
-        const workbook = XLSX.read(csvText, { type: 'string' });
-        const firstSheet = workbook.SheetNames[0];
-        rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-      } else {
-        throw new Error('SheetJS library is not available');
+    let allTransactions = [];
+
+    // วนอ่านทุก Sheet ที่มีข้อมูลรายการ เช่น Data, Improve#1, หรือชีตแรก
+    workbook.SheetNames.forEach(sheetName => {
+      // ข้ามชีตที่ไม่ใช่ข้อมูลรายการ
+      if (sheetName.includes('สรุป') || sheetName.includes('Kaizen') || sheetName.includes('Set')) return;
+
+      const ws = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (rows && rows.length > 0) {
+        rows.forEach((r, idx) => {
+          // ตรวจสอบว่าเป็นแถวรายการที่มีข้อมูลจริง
+          const yr = String(r['Year'] || r['year'] || r['ปี'] || '2026');
+          const mo = String(r['Month'] || r['month'] || r['เดือน'] || 'JAN').toUpperCase().slice(0, 3);
+          const po = String(r['PO No.'] || r['PO No'] || r['poNo'] || r['PO'] || '').trim();
+          const supp = String(r['Supplier'] || r['supplier'] || r['ซัพพลายเออร์'] || r['ชื่อคู่ค้า'] || '').trim();
+          const desc = String(r['Item Description'] || r['description'] || r['รายละเอียด'] || '').trim();
+          const qty = parseFloat(r['Qty'] || r['qty'] || r['จำนวน'] || 0) || 0;
+          const unit = String(r['Unit'] || r['unit'] || r['หน่วย'] || 'EA').trim();
+          const minPrice = parseFloat(r['Min Unit Price'] || r['minUnitPrice'] || 0) || 0;
+          const totalPrice = parseFloat(r['Total Price'] || r['totalPrice'] || (qty * minPrice) || 0) || 0;
+          const negPrice = parseFloat(r['Negotiated Unit Price'] || r['negotiatedUnitPrice'] || minPrice) || minPrice;
+          const unitDiff = parseFloat(r['Unit Difference'] || r['unitDifference'] || (minPrice - negPrice)) || 0;
+          const totalSaving = parseFloat(r['Total Saving'] || r['totalSaving'] || (unitDiff * qty)) || 0;
+          const pctDisc = totalPrice > 0 ? (totalSaving / totalPrice) : 0;
+          const method = String(r['Method'] || r['method'] || r['กลยุทธ์'] || 'Negotiate').trim();
+          const pic = String(r['PIC'] || r['pic'] || r['ผู้รับผิดชอบ'] || 'ไม่ระบุ').trim();
+
+          if (po || supp || totalSaving > 0 || totalPrice > 0) {
+            allTransactions.push({
+              id: `${sheetName}-${idx + 1}`,
+              globalId: `${sheetName}-${idx + 1}`,
+              year: yr,
+              month: mo,
+              poNo: po || `PO-${idx + 1}`,
+              supplier: supp || 'ไม่ระบุ',
+              description: desc,
+              qty: qty,
+              unit: unit,
+              minUnitPrice: minPrice,
+              totalPrice: totalPrice,
+              negotiatedUnitPrice: negPrice,
+              unitDifference: unitDiff,
+              totalSaving: totalSaving,
+              percentDiscount: pctDisc,
+              strategy: method,
+              method: method,
+              pic: pic
+            });
+          }
+        });
       }
-    }
-
-    if (!rows || rows.length === 0) {
-      throw new Error('ไม่พบรายการข้อมูลใน Google Sheet');
-    }
-
-    // แปลงแถวข้อมูลเป็นรูปแบบ Transaction มาตรฐาน
-    const parsedTransactions = rows.map((r, idx) => {
-      const yr = String(r['Year'] || r['year'] || r['ปี'] || '2026');
-      const mo = String(r['Month'] || r['month'] || r['เดือน'] || 'JAN').toUpperCase().slice(0, 3);
-      const po = String(r['PO No.'] || r['PO No'] || r['poNo'] || r['PO'] || `PO-${idx + 1}`);
-      const supp = String(r['Supplier'] || r['supplier'] || r['ซัพพลายเออร์'] || r['ชื่อคู่ค้า'] || 'ไม่ระบุ');
-      const desc = String(r['Item Description'] || r['description'] || r['รายละเอียด'] || '');
-      const qty = parseFloat(r['Qty'] || r['qty'] || r['จำนวน'] || 0) || 0;
-      const unit = String(r['Unit'] || r['unit'] || r['หน่วย'] || 'EA');
-      const minPrice = parseFloat(r['Min Unit Price'] || r['minUnitPrice'] || 0) || 0;
-      const totalPrice = parseFloat(r['Total Price'] || r['totalPrice'] || (qty * minPrice) || 0) || 0;
-      const negPrice = parseFloat(r['Negotiated Unit Price'] || r['negotiatedUnitPrice'] || minPrice) || minPrice;
-      const unitDiff = parseFloat(r['Unit Difference'] || r['unitDifference'] || (minPrice - negPrice)) || 0;
-      const totalSaving = parseFloat(r['Total Saving'] || r['totalSaving'] || (unitDiff * qty)) || 0;
-      const pctDisc = totalPrice > 0 ? (totalSaving / totalPrice) : 0;
-      const method = String(r['Method'] || r['method'] || r['กลยุทธ์'] || 'Negotiate').trim();
-      const pic = String(r['PIC'] || r['pic'] || r['ผู้รับผิดชอบ'] || 'ไม่ระบุ').trim();
-
-      return {
-        id: `gs-${idx + 1}`,
-        globalId: `gs-${idx + 1}`,
-        year: yr,
-        month: mo,
-        poNo: po,
-        supplier: supp,
-        description: desc,
-        qty: qty,
-        unit: unit,
-        minUnitPrice: minPrice,
-        totalPrice: totalPrice,
-        negotiatedUnitPrice: negPrice,
-        unitDifference: unitDiff,
-        totalSaving: totalSaving,
-        percentDiscount: pctDisc,
-        strategy: method,
-        method: method,
-        pic: pic
-      };
     });
 
+    if (allTransactions.length === 0) {
+      throw new Error('ไม่พบข้อมูลรายการสั่งซื้อในไฟล์ Google Sheet');
+    }
+
     // อัปเดตข้อมูลในระบบ
-    State.transactions = parsedTransactions;
+    State.transactions = allTransactions;
     filterTransactions();
     renderAllViews();
 
@@ -1601,8 +1596,6 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
     // บันทึกการตั้งค่า
     localStorage.setItem(GSHEET_STORAGE_KEY, JSON.stringify({
       url: urlInput,
-      sheetName: sheetName,
-      apiKey: apiKey,
       autoSync: autoSync,
       lastSync: timeStr
     }));
@@ -1616,7 +1609,7 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
     }
 
     if (showAlert) {
-      alert(`✅ ซิงค์ข้อมูลสำเร็จ!\nโหลดข้อมูลจาก Google Sheet ทั้งหมด ${parsedTransactions.length.toLocaleString()} รายการ`);
+      alert(`✅ ซิงค์ข้อมูลสำเร็จ!\nโหลดข้อมูลจาก Google Sheet ทั้งหมด ${allTransactions.length.toLocaleString()} รายการ (จากทุกแท็บชีต)`);
     }
   } catch (err) {
     console.error('Google Sheet Sync Error:', err);
@@ -1639,11 +1632,7 @@ window.clearGoogleSheetSettings = function() {
   if (confirm('คุณต้องการล้างการตั้งค่า Google Sheet หรือไม่?')) {
     localStorage.removeItem(GSHEET_STORAGE_KEY);
     const urlInput = document.getElementById('gsheet-url-input');
-    const sheetNameInput = document.getElementById('gsheet-sheet-name');
-    const apiKeyInput = document.getElementById('gsheet-api-key');
     if (urlInput) urlInput.value = '';
-    if (sheetNameInput) sheetNameInput.value = 'Data';
-    if (apiKeyInput) apiKeyInput.value = '';
     const badge = document.getElementById('gsheet-status-badge');
     if (badge) {
       badge.textContent = '⚪ ยังไม่ได้เชื่อมต่อ';
