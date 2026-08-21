@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * KPI DISCOUNT SUPPLIER & PROCUREMENT DASHBOARD - APPLICATION ENGINE
+ * KPI DISCOUNT SUPPLIER & PROCUREMENT DASHBOARD - THAI LOCALIZED ENGINE
  * ==========================================================================
  */
 
@@ -32,6 +32,30 @@ const State = {
     picPerformance: null,
     multiYear: null
   }
+};
+
+// Thai Month Mapping
+const THAI_MONTHS = {
+  'JAN': 'ม.ค. (JAN)',
+  'FEB': 'ก.พ. (FEB)',
+  'MAR': 'มี.ค. (MAR)',
+  'APR': 'เม.ย. (APR)',
+  'MAY': 'พ.ค. (MAY)',
+  'JUN': 'มิ.ย. (JUN)',
+  'JUL': 'ก.ค. (JUL)',
+  'AUG': 'ส.ค. (AUG)',
+  'SEP': 'ก.ย. (SEP)',
+  'OCT': 'ต.ค. (OCT)',
+  'NOV': 'พ.ย. (NOV)',
+  'DEC': 'ธ.ค. (DEC)'
+};
+
+const THAI_PIC_NAMES = {
+  'Pawina': 'คุณปวิณา ใจดี',
+  'Tanida': 'คุณธนิดา ธรรมสุนทร',
+  'Yuwanit': 'คุณยุวนิต โนจันทร์',
+  'Dusit': 'คุณดุสิต',
+  'Saniya': 'คุณศานิยา'
 };
 
 // Initializer
@@ -94,7 +118,6 @@ function setupDataset() {
   const recent = State.data.recentTransactions || [];
   const historical = State.data.historicalTransactions || [];
   
-  // Map recent to 2026/2025 and ensure all records have clean fields
   const all = [...recent, ...historical].map((item, idx) => ({
     ...item,
     globalId: item.id || `rec-${idx}`,
@@ -104,7 +127,7 @@ function setupDataset() {
     totalSaving: Number(item.totalSaving) || 0,
     percentDiscount: Number(item.percentDiscount) || 0,
     qty: Number(item.qty) || 0,
-    pic: (item.pic || 'Unknown').trim(),
+    pic: (item.pic || 'ไม่ระบุ').trim(),
     strategy: (item.strategy || item.method || 'Negotiate').trim()
   }));
 
@@ -153,15 +176,15 @@ function switchView(viewName) {
     }
   });
 
-  // Update Topbar Title
+  // Update Topbar Title in Thai
   const titles = {
-    'dashboard': { title: 'Executive Overview', desc: 'Procurement cost reduction metrics and supplier discount analysis' },
-    'kpi-tracking': { title: 'Monthly & Yearly KPI Tracker', desc: 'Performance tracking against 3% annual cost reduction target' },
-    'transactions': { title: 'PO & Transaction Explorer', desc: 'Search and inspect 5,800+ procurement discount records' },
-    'suppliers': { title: 'Supplier Intelligence', desc: 'Cost savings and purchasing volume ranking by vendor' },
-    'pic-team': { title: 'PIC Team Leaderboard', desc: 'Individual buyer performance metrics and strategy cross-analysis' },
-    'simulators': { title: 'Kaizen & Credit Simulators', desc: 'Labor productivity and financial terms simulation tools' },
-    'data-import': { title: 'Data Management', desc: 'Upload updated Excel files or export datasets' }
+    'dashboard': { title: 'ภาพรวมผู้บริหาร (Executive Overview)', desc: 'สรุปผลการต่อรองลดต้นทุนจัดซื้อและติดตามผลการดำเนินงานตามเป้าหมาย' },
+    'kpi-tracking': { title: 'สรุปผล KPI รายเดือน & รายปี', desc: 'เปรียบเทียบผลการประหยัดต้นทุนเทียบเป้าหมาย 3.0% ประจำปี' },
+    'transactions': { title: 'รายการสั่งซื้อ & การต่อรอง (PO Transactions)', desc: 'ค้นหาและตรวจสอบรายการสั่งซื้อกว่า 5,800+ รายการ' },
+    'suppliers': { title: 'การวิเคราะห์ซัพพลายเออร์ (Supplier Intelligence)', desc: 'สรุปยอดสั่งซื้อและมูลค่าส่วนลดที่ได้รับจากคู่ค้าแต่ละราย' },
+    'pic-team': { title: 'อันดับผลงานทีมจัดซื้อ (PIC Leaderboard)', desc: 'สถิติและกลยุทธ์การต่อรองของเจ้าหน้าที่จัดซื้อแต่ละท่าน' },
+    'simulators': { title: 'โปรแกรมคำนวณ Kaizen & ขยายเครดิตเทอม', desc: 'เครื่องมือจำลองผลประหยัดเวลาและผลประโยชน์ทางการเงิน' },
+    'data-import': { title: 'นำเข้า / ส่งออกข้อมูล (Data Management)', desc: 'อัปโหลดไฟล์ Excel (.xlsx) ชุดใหม่ หรือดาวน์โหลดข้อมูล' }
   };
 
   const current = titles[viewName] || titles['dashboard'];
@@ -209,12 +232,12 @@ function renderAllViews() {
 // Formatters
 function formatCurrency(num, decimals = 2) {
   if (isNaN(num) || num === null) return '฿0.00';
-  return '฿' + Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return '฿' + Number(num).toLocaleString('th-TH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 function formatNumber(num, decimals = 0) {
   if (isNaN(num) || num === null) return '0';
-  return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return Number(num).toLocaleString('th-TH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 function formatPercent(num, decimals = 2) {
@@ -236,14 +259,12 @@ function renderExecutiveDashboard() {
   let poCount = 0;
 
   if (is2026 && State.data.monthlySummary) {
-    // Exact 2026 data from monthly summary
     State.data.monthlySummary.forEach(m => {
       totalPurchase += (m.pv2026 || 0);
       totalSavings += (m.cr2026 || 0);
     });
     poCount = State.data.recentTransactions?.length || 1397;
   } else {
-    // Filter transactions by year
     const txs = (year === 'ALL') ? State.transactions : State.transactions.filter(t => t.year === year);
     poCount = txs.length;
     txs.forEach(t => {
@@ -258,12 +279,12 @@ function renderExecutiveDashboard() {
 
   // Update Hero Cards
   document.getElementById('kpi-total-savings').textContent = formatCurrency(totalSavings);
-  document.getElementById('kpi-savings-mb').textContent = `${(totalSavings / 1000000).toFixed(2)} Million THB`;
-  document.getElementById('kpi-savings-rate').textContent = `${(savingRate * 100).toFixed(2)}% Overall Saving`;
+  document.getElementById('kpi-savings-mb').textContent = `${(totalSavings / 1000000).toFixed(2)} ล้านบาท`;
+  document.getElementById('kpi-savings-rate').textContent = `${(savingRate * 100).toFixed(2)}% ส่วนลดรวม`;
 
   document.getElementById('kpi-total-purchase').textContent = formatCurrency(totalPurchase);
-  document.getElementById('kpi-purchase-mb').textContent = `${(totalPurchase / 1000000).toFixed(2)} Million THB`;
-  document.getElementById('kpi-po-count').textContent = `${formatNumber(poCount)} Transactions`;
+  document.getElementById('kpi-purchase-mb').textContent = `${(totalPurchase / 1000000).toFixed(2)} ล้านบาท`;
+  document.getElementById('kpi-po-count').textContent = `${formatNumber(poCount)} รายการสั่งซื้อ`;
 
   const targetPctEl = document.getElementById('kpi-target-pct');
   const targetBadgeEl = document.getElementById('kpi-target-badge');
@@ -273,11 +294,11 @@ function renderExecutiveDashboard() {
   if (isMet) {
     targetBadgeEl.className = 'kpi-pill success';
     targetBadgeEl.textContent = 'ได้ตามเป้าหมาย (Passed)';
-    targetDiffEl.textContent = `+${((savingRate - targetRate) * 100).toFixed(2)}% vs Target`;
+    targetDiffEl.textContent = `+${((savingRate - targetRate) * 100).toFixed(2)}% สูงกว่าเป้า`;
   } else {
     targetBadgeEl.className = 'kpi-pill danger';
-    targetBadgeEl.textContent = 'ไม่ได้ตามเป้าหมาย (Below)';
-    targetDiffEl.textContent = `${((savingRate - targetRate) * 100).toFixed(2)}% vs Target`;
+    targetBadgeEl.textContent = 'ไม่ได้ตามเป้าหมาย (Below Target)';
+    targetDiffEl.textContent = `${((savingRate - targetRate) * 100).toFixed(2)}% ต่ำกว่าเป้า`;
   }
 
   // Credit Terms Savings
@@ -299,6 +320,7 @@ function renderMonthlyTrendChart() {
   if (!ctx || !State.data) return;
 
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const monthLabelsThai = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   const monthlyData = State.data.monthlySummary || [];
 
   const purchaseValuesMB = months.map(m => {
@@ -327,10 +349,10 @@ function renderMonthlyTrendChart() {
   State.charts.monthlyTrend = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: months,
+      labels: monthLabelsThai,
       datasets: [
         {
-          label: 'Purchase Value (MB)',
+          label: 'มูลค่าสั่งซื้อ (ล้านบาท)',
           data: purchaseValuesMB,
           backgroundColor: 'rgba(59, 130, 246, 0.35)',
           borderColor: '#3b82f6',
@@ -339,7 +361,7 @@ function renderMonthlyTrendChart() {
           yAxisID: 'y'
         },
         {
-          label: 'Cost Reduction (MB)',
+          label: 'มูลค่าต่อรองได้ (ล้านบาท)',
           data: costReductionMB,
           backgroundColor: 'rgba(16, 185, 129, 0.75)',
           borderColor: '#10b981',
@@ -348,7 +370,7 @@ function renderMonthlyTrendChart() {
           yAxisID: 'y1'
         },
         {
-          label: '3% Target (MB)',
+          label: 'เป้าหมาย 3% (ล้านบาท)',
           data: targetSavingsMB,
           type: 'line',
           borderColor: '#f59e0b',
@@ -366,30 +388,30 @@ function renderMonthlyTrendChart() {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
-          labels: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 12 } }
+          labels: { color: textColor, font: { family: 'Prompt, Plus Jakarta Sans', size: 12 } }
         },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ฿${ctx.raw} MB`
+            label: (ctx) => `${ctx.dataset.label}: ฿${ctx.raw} ล้านบาท`
           }
         }
       },
       scales: {
         x: {
-          ticks: { color: textColor },
+          ticks: { color: textColor, font: { family: 'Prompt' } },
           grid: { color: gridColor }
         },
         y: {
           type: 'linear',
           position: 'left',
-          title: { display: true, text: 'Purchase Volume (MB)', color: textColor },
+          title: { display: true, text: 'มูลค่าสั่งซื้อ (ล้านบาท)', color: textColor, font: { family: 'Prompt' } },
           ticks: { color: textColor },
           grid: { color: gridColor }
         },
         y1: {
           type: 'linear',
           position: 'right',
-          title: { display: true, text: 'Cost Savings (MB)', color: textColor },
+          title: { display: true, text: 'มูลค่าต่อรองได้ (ล้านบาท)', color: textColor, font: { family: 'Prompt' } },
           ticks: { color: textColor },
           grid: { drawOnChartArea: false }
         }
@@ -437,14 +459,14 @@ function renderStrategyDonutChart() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.label}: ฿${Number(ctx.raw).toLocaleString('en-US', {maximumFractionDigits: 0})}`
+            label: (ctx) => `${ctx.label}: ฿${Number(ctx.raw).toLocaleString('th-TH', {maximumFractionDigits: 0})} บาท`
           }
         }
       }
     }
   });
 
-  // Render List Breakdown
+  // Render List Breakdown in Thai
   const total = dataValues.reduce((a, b) => a + b, 0) || 1;
   const listEl = document.getElementById('strategy-breakdown-list');
   if (listEl) {
@@ -458,7 +480,7 @@ function renderStrategyDonutChart() {
           </div>
           <div class="strategy-figures">
             <div class="strategy-amt">${formatCurrency(item.Total, 0)}</div>
-            <div class="strategy-pct">${pct}% of total</div>
+            <div class="strategy-pct">${pct}% ของทั้งหมด</div>
           </div>
         </div>
       `;
@@ -474,7 +496,7 @@ function renderPICPerformanceChart() {
   const currentTxs = (State.activeYear === 'ALL') ? State.transactions : State.transactions.filter(t => t.year === State.activeYear);
 
   currentTxs.forEach(t => {
-    const pic = t.pic || 'Unknown';
+    const pic = t.pic || 'ไม่ระบุ';
     if (!picMap[pic]) picMap[pic] = { savings: 0, purchase: 0, count: 0 };
     picMap[pic].savings += t.totalSaving;
     picMap[pic].purchase += t.totalPrice;
@@ -482,7 +504,7 @@ function renderPICPerformanceChart() {
   });
 
   const sortedPics = Object.keys(picMap).sort((a, b) => picMap[b].savings - picMap[a].savings);
-  const labels = sortedPics;
+  const labels = sortedPics.map(p => THAI_PIC_NAMES[p] || p);
   const savingsValues = sortedPics.map(p => Number((picMap[p].savings / 1000000).toFixed(2)));
 
   if (State.charts.picPerformance) {
@@ -498,7 +520,7 @@ function renderPICPerformanceChart() {
     data: {
       labels: labels,
       datasets: [{
-        label: 'Cost Reduction (Million THB)',
+        label: 'มูลค่าต่อรองได้ (ล้านบาท)',
         data: savingsValues,
         backgroundColor: [
           '#10b981', '#3b82f6', '#8b5cf6', '#06b6d4', '#f59e0b'
@@ -513,13 +535,17 @@ function renderPICPerformanceChart() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => `Savings: ฿${ctx.raw} Million THB`
+            label: (ctx) => `ยอดลดต้นทุน: ฿${ctx.raw} ล้านบาท`
           }
         }
       },
       scales: {
-        x: { ticks: { color: textColor }, grid: { display: false } },
-        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+        x: { ticks: { color: textColor, font: { family: 'Prompt' } }, grid: { display: false } },
+        y: { 
+          ticks: { color: textColor }, 
+          grid: { color: gridColor },
+          title: { display: true, text: 'ล้านบาท', color: textColor, font: { family: 'Prompt' } }
+        }
       }
     }
   });
@@ -533,7 +559,7 @@ function renderTopSuppliersList() {
   const supplierMap = {};
 
   currentTxs.forEach(t => {
-    const s = t.supplier || 'Unknown';
+    const s = t.supplier || 'ไม่ระบุ';
     if (!supplierMap[s]) supplierMap[s] = { savings: 0, purchase: 0, count: 0 };
     supplierMap[s].savings += t.totalSaving;
     supplierMap[s].purchase += t.totalPrice;
@@ -550,15 +576,15 @@ function renderTopSuppliersList() {
     return `
       <div class="strategy-row">
         <div class="strategy-meta">
-          <span class="pic-rank" style="min-width: 22px; text-align: center;">#${idx + 1}</span>
+          <span class="pic-rank" style="min-width: 24px; text-align: center;">#${idx + 1}</span>
           <div>
             <div class="strategy-name" style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${sup}">${sup}</div>
-            <div class="strategy-pct">${data.count} Orders | Avg ${formatPercent(avgDisc, 1)} off</div>
+            <div class="strategy-pct">${data.count} คำสั่งซื้อ | ลดเฉลี่ย ${formatPercent(avgDisc, 1)}</div>
           </div>
         </div>
         <div class="strategy-figures">
           <div class="strategy-amt" style="color: var(--accent-emerald);">${formatCurrency(data.savings, 0)}</div>
-          <div class="strategy-pct">Vol: ${formatCurrency(data.purchase, 0)}</div>
+          <div class="strategy-pct">ยอดซื้อ: ${formatCurrency(data.purchase, 0)}</div>
         </div>
       </div>
     `;
@@ -591,7 +617,7 @@ function renderMonthlyKPITracking() {
 
     return `
       <tr>
-        <td><strong>${row.month}</strong></td>
+        <td><strong>${THAI_MONTHS[row.month] || row.month}</strong></td>
         <td>${formatCurrency(row.pv2026)}</td>
         <td class="cell-highlight">${formatCurrency(row.cr2026)}</td>
         <td>${formatCurrency(row.target2026)}</td>
@@ -614,7 +640,7 @@ function renderMonthlyKPITracking() {
   const isTotalPassed = totalActualPct >= 0.03;
   tbody.innerHTML += `
     <tr style="background: var(--bg-glass); font-weight: 700; border-top: 2px solid var(--border-subtle);">
-      <td>GRAND TOTAL (รวมทั้งปี)</td>
+      <td>รวมทั้งปี (GRAND TOTAL)</td>
       <td>${formatCurrency(totalPV)}</td>
       <td class="cell-highlight">${formatCurrency(totalCR)}</td>
       <td>${formatCurrency(totalTarget)}</td>
@@ -635,8 +661,8 @@ function renderMonthlyKPITracking() {
   if (creditTbody) {
     creditTbody.innerHTML = monthly.filter(m => m.creditPOVal > 0).map(m => `
       <tr>
-        <td><strong>${m.month}</strong></td>
-        <td><span class="badge-tag">+${m.creditDiffDays} Days</span></td>
+        <td><strong>${THAI_MONTHS[m.month] || m.month}</strong></td>
+        <td><span class="badge-tag">+${m.creditDiffDays} วัน</span></td>
         <td>${formatCurrency(m.creditPOVal)}</td>
         <td class="cell-highlight">${formatCurrency(m.creditSaving)}</td>
       </tr>
@@ -657,7 +683,7 @@ function renderMultiYearChart() {
     { year: '2026', purchaseValue: 645209533.19, costSaving: 25785570.12 }
   ];
 
-  const labels = yearly.map(y => y.year);
+  const labels = yearly.map(y => `ปี ${y.year}`);
   const savingsMB = yearly.map(y => Number((y.costSaving / 1000000).toFixed(2)));
 
   if (State.charts.multiYear) {
@@ -673,7 +699,7 @@ function renderMultiYearChart() {
     data: {
       labels: labels,
       datasets: [{
-        label: 'Cost Reduction (Million THB)',
+        label: 'มูลค่าผลประหยัดต้นทุน (ล้านบาท)',
         data: savingsMB,
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -688,14 +714,14 @@ function renderMultiYearChart() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: textColor } },
+        legend: { labels: { color: textColor, font: { family: 'Prompt' } } },
         tooltip: {
-          callbacks: { label: (ctx) => `Savings: ฿${ctx.raw} Million THB` }
+          callbacks: { label: (ctx) => `ยอดลดต้นทุน: ฿${ctx.raw} ล้านบาท` }
         }
       },
       scales: {
-        x: { ticks: { color: textColor }, grid: { color: gridColor } },
-        y: { ticks: { color: textColor }, grid: { color: gridColor }, title: { display: true, text: 'Million THB', color: textColor } }
+        x: { ticks: { color: textColor, font: { family: 'Prompt' } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor }, title: { display: true, text: 'ล้านบาท', color: textColor, font: { family: 'Prompt' } } }
       }
     }
   });
@@ -860,7 +886,7 @@ function renderTransactionTable() {
   const pageData = State.filteredTransactions.slice(startIdx, endIdx);
 
   if (pageData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 40px; color: var(--text-muted);">No transaction records matched your filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 40px; color: var(--text-muted);">ไม่พบรายการข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
   } else {
     tbody.innerHTML = pageData.map(item => `
       <tr onclick="openTxModal('${item.globalId}')">
@@ -874,7 +900,7 @@ function renderTransactionTable() {
         <td class="cell-highlight">${formatCurrency(item.totalSaving)}</td>
         <td><strong>${(item.percentDiscount * 100).toFixed(1)}%</strong></td>
         <td><span class="badge-tag">${item.strategy || '-'}</span></td>
-        <td>${item.pic || '-'}</td>
+        <td>${THAI_PIC_NAMES[item.pic] || item.pic || '-'}</td>
       </tr>
     `).join('');
   }
@@ -882,8 +908,8 @@ function renderTransactionTable() {
   // Pagination UI
   if (infoEl) {
     infoEl.textContent = total > 0 
-      ? `Showing ${startIdx + 1} to ${endIdx} of ${formatNumber(total)} transactions`
-      : 'Showing 0 to 0 of 0 transactions';
+      ? `แสดง ${startIdx + 1} ถึง ${endIdx} จากทั้งหมด ${formatNumber(total)} รายการ`
+      : 'แสดง 0 ถึง 0 จากทั้งหมด 0 รายการ';
   }
 
   if (prevBtn) prevBtn.disabled = (State.tablePage <= 1);
@@ -923,57 +949,57 @@ window.openTxModal = function(globalId) {
   const modalBody = document.getElementById('modal-tx-body');
   const modalTitle = document.getElementById('modal-tx-title');
 
-  if (modalTitle) modalTitle.textContent = `PO: ${item.poNo || 'Unknown'}`;
+  if (modalTitle) modalTitle.textContent = `รายละเอียด PO: ${item.poNo || 'ไม่ระบุ'}`;
 
   if (modalBody) {
     modalBody.innerHTML = `
       <div class="modal-detail-row">
-        <span class="label">Supplier</span>
+        <span class="label">ชื่อซัพพลายเออร์</span>
         <span class="val">${item.supplier}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Description</span>
+        <span class="label">รายละเอียดสินค้า/บริการ</span>
         <span class="val">${item.description}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Period / Year</span>
-        <span class="val">${item.month} / ${item.year}</span>
+        <span class="label">งวดประจำเดือน / ปี</span>
+        <span class="val">${THAI_MONTHS[item.month] || item.month} / ปี ${item.year}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Quantity & Unit</span>
+        <span class="label">จำนวนและหน่วยนับ</span>
         <span class="val">${formatNumber(item.qty)} ${item.unit}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Lowest Unit Price (ราคาต่ำสุด)</span>
+        <span class="label">ราคาต่ำสุดต่อหน่วย</span>
         <span class="val">${formatCurrency(item.minUnitPrice)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Negotiated Unit Price (ราคาต่อรองได้)</span>
+        <span class="label">ราคาต่อรองได้ต่อหน่วย</span>
         <span class="val">${formatCurrency(item.negotiatedUnitPrice)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Difference Per Unit (ผลต่างต่อหน่วย)</span>
+        <span class="label">ส่วนต่างราคาต่อหน่วย</span>
         <span class="val">${formatCurrency(item.unitDifference)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Total PO Amount (ราคารวม)</span>
+        <span class="label">มูลค่าสั่งซื้อรวม (PO Total)</span>
         <span class="val">${formatCurrency(item.totalPrice)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Total Cost Reduction (รวมที่ต่อรองได้)</span>
+        <span class="label">รวมมูลค่าที่ต่อรองลดลงได้</span>
         <span class="val" style="color: var(--accent-emerald); font-size: 16px; font-weight: 700;">${formatCurrency(item.totalSaving)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">% Discount</span>
+        <span class="label">คิดเป็น % ส่วนลด</span>
         <span class="val" style="color: var(--accent-primary); font-weight: 700;">${(item.percentDiscount * 100).toFixed(2)}%</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Negotiation Strategy</span>
+        <span class="label">กลยุทธ์ด้านจัดซื้อ (Strategy)</span>
         <span class="val"><span class="badge-tag">${item.strategy}</span></span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">Person In Charge (PIC)</span>
-        <span class="val">${item.pic}</span>
+        <span class="label">ผู้รับผิดชอบ (Person in Charge)</span>
+        <span class="val">${THAI_PIC_NAMES[item.pic] || item.pic}</span>
       </div>
     `;
   }
@@ -1001,7 +1027,7 @@ function renderSuppliersView() {
   const supplierMap = {};
 
   currentTxs.forEach(t => {
-    const s = t.supplier || 'Unknown';
+    const s = t.supplier || 'ไม่ระบุ';
     if (!supplierMap[s]) {
       supplierMap[s] = { name: s, savings: 0, purchase: 0, count: 0, strategies: {} };
     }
@@ -1052,19 +1078,11 @@ function renderPICLeaderboard() {
   const tableBody = document.getElementById('pic-strategy-tbody');
   if (!container || !State.data) return;
 
-  const thaiNames = {
-    'Pawina': 'คุณปวิณา ใจดี',
-    'Tanida': 'คุณธนิดา ธรรมสุนทร',
-    'Yuwanit': 'คุณยุวนิต โนจันทร์',
-    'Dusit': 'คุณดุสิต',
-    'Saniya': 'คุณศานิยา'
-  };
-
   const currentTxs = (State.activeYear === 'ALL') ? State.transactions : State.transactions.filter(t => t.year === State.activeYear);
   const picMap = {};
 
   currentTxs.forEach(t => {
-    const pic = t.pic || 'Unknown';
+    const pic = t.pic || 'ไม่ระบุ';
     if (!picMap[pic]) picMap[pic] = { name: pic, savings: 0, purchase: 0, count: 0 };
     picMap[pic].savings += t.totalSaving;
     picMap[pic].purchase += t.totalPrice;
@@ -1077,20 +1095,22 @@ function renderPICLeaderboard() {
   container.innerHTML = sortedPics.map((p, idx) => {
     const share = ((p.savings / totalTeamSavings) * 100).toFixed(1);
     const avgDisc = p.purchase > 0 ? (p.savings / p.purchase) : 0;
+    const thaiName = THAI_PIC_NAMES[p.name] || p.name;
+
     return `
       <div class="pic-card">
         <div class="pic-top">
-          <span class="pic-rank">Rank #${idx + 1}</span>
-          <span class="kpi-pill success">${share}% Team Share</span>
+          <span class="pic-rank">อันดับ #${idx + 1}</span>
+          <span class="kpi-pill success">สัดส่วน ${share}%</span>
         </div>
         <div>
-          <div class="pic-name">${p.name}</div>
-          <div class="pic-thai-name">${thaiNames[p.name] || 'Procurement Buyer'}</div>
+          <div class="pic-name">${thaiName}</div>
+          <div class="pic-thai-name">เจ้าหน้าที่จัดซื้อ (Buyer: ${p.name})</div>
         </div>
         <div class="pic-metric">${formatCurrency(p.savings, 0)}</div>
         <div class="pic-submetrics">
-          <span>POs: <strong>${p.count}</strong></span>
-          <span>Avg Discount: <strong>${formatPercent(avgDisc, 1)}</strong></span>
+          <span>จำนวน: <strong>${p.count} รายการ</strong></span>
+          <span>ส่วนลดเฉลี่ย: <strong>${formatPercent(avgDisc, 1)}</strong></span>
         </div>
       </div>
     `;
@@ -1137,7 +1157,7 @@ function initSimulators() {
     const result = (min / 60) * jobs * wage * months;
     document.getElementById('sim-kaizen-result').textContent = formatCurrency(result);
     document.getElementById('sim-kaizen-formula').textContent = 
-      `(${min} / 60) × ${jobs} tasks × ฿${wage}/hr × ${months} month(s)`;
+      `(${min} / 60) × ${jobs} งาน × ฿${wage}/ชม. × ${months} เดือน`;
   };
 
   [wageInput, minInput, jobsInput, monthsInput].forEach(el => el?.addEventListener('input', calcKaizen));
@@ -1202,7 +1222,7 @@ function initDropzone() {
 
 function handleUploadedExcel(file) {
   if (typeof XLSX === 'undefined') {
-    alert("SheetJS library not loaded. Please connect to the internet.");
+    alert("กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อโหลดไลบรารี SheetJS");
     return;
   }
 
@@ -1216,11 +1236,10 @@ function handleUploadedExcel(file) {
       const sheet = workbook.Sheets[sheetName];
       const jsonRows = XLSX.utils.sheet_to_json(sheet);
 
-      alert(`Successfully loaded ${jsonRows.length} rows from ${file.name}! Updating dashboard...`);
-      // Update application state
+      alert(`โหลดข้อมูลสำเร็จ ${jsonRows.length} รายการจากไฟล์ ${file.name}! กำลังอัปเดตหน้าแดชบอร์ด...`);
       switchView('transactions');
     } catch (err) {
-      alert("Error parsing Excel file: " + err.message);
+      alert("เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: " + err.message);
     }
   };
   reader.readAsArrayBuffer(file);
@@ -1228,7 +1247,7 @@ function handleUploadedExcel(file) {
 
 // Export Helpers
 function exportFilteredTransactions() {
-  const headers = ["Month", "PO No", "Supplier", "Description", "Qty", "Unit", "Total Price", "Total Saving", "% Discount", "Strategy", "PIC"];
+  const headers = ["เดือน", "เลขที่ PO", "ชื่อซัพพลายเออร์", "รายละเอียดสินค้า/บริการ", "จำนวน", "หน่วย", "ราคารวม (บาท)", "รวมที่ต่อรองได้ (บาท)", "% ส่วนลด", "กลยุทธ์", "ผู้รับผิดชอบ"];
   const rows = State.filteredTransactions.map(t => [
     t.month,
     `"${t.poNo}"`,
@@ -1240,14 +1259,14 @@ function exportFilteredTransactions() {
     t.totalSaving,
     (t.percentDiscount * 100).toFixed(2) + '%',
     `"${t.strategy}"`,
-    `"${t.pic}"`
+    `"${THAI_PIC_NAMES[t.pic] || t.pic}"`
   ]);
 
   downloadCSV("transactions_export.csv", headers, rows);
 }
 
 window.exportMonthlyKPIToCSV = function() {
-  const headers = ["Month", "Purchase Value (THB)", "Cost Reduction (THB)", "Target 3% (THB)", "% Actual", "Status", "Credit Saving (THB)"];
+  const headers = ["เดือน", "มูลค่าสั่งซื้อ (บาท)", "มูลค่าต่อรองได้ (บาท)", "เป้าหมาย 3% (บาท)", "% ส่วนลดจริง", "สถานะ KPI", "ผลประหยัดเพิ่มเครดิต (บาท)"];
   const rows = (State.data.monthlySummary || []).map(m => [
     m.month,
     m.pv2026,
