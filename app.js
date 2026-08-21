@@ -445,10 +445,20 @@ function renderMonthlyTrendChart() {
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
 
   if (State.chartMode === 'bar') {
-    // ซ่อนจุดเป้าหมายในเดือนอนาคตที่ยังไม่มีข้อมูล เพื่อไม่ให้เส้นตกไปที่ 0 ลากยาวติดพื้น
-    const purchaseValuesMB = monthlyAgg.map(r => (r.pv > 0 ? Number((r.pv / 1000000).toFixed(2)) : (r.cr !== 0 ? Number((r.pv / 1000000).toFixed(2)) : null)));
-    const costReductionMB = monthlyAgg.map(r => (r.pv > 0 || r.cr !== 0 ? Number((r.cr / 1000000).toFixed(2)) : null));
+    // ป้องกันการเกิดแท่งลอย (Floating Bar) ด้วยการยึดเส้นฐานที่ 0 ให้ตรงกันทั้งแกนซ้ายและขวา
+    const purchaseValuesMB = monthlyAgg.map(r => (r.pv > 0 ? Number((r.pv / 1000000).toFixed(2)) : null));
+    
+    // ยึดความสูงแท่งที่ 0 เพื่อให้แท่งทั้งหมดติดพื้นดิน ไม่ลอยอยู่กลางอากาศ
+    const costReductionMB = monthlyAgg.map(r => {
+      if (r.pv === 0 && r.cr === 0) return null;
+      // หากมีค่าติดลบ ให้แสดงที่พื้นฐาน 0 (ไม่ดึงแกนลงไป -1 ซึ่งทำให้แท่งอื่นลอย)
+      return Number((r.cr / 1000000).toFixed(2));
+    });
+
     const targetSavingsMB = monthlyAgg.map(r => (r.pv > 0 ? Number((r.target / 1000000).toFixed(2)) : null));
+
+    // ตรวจสอบค่าติดลบสำหรับ Tooltip
+    const rawCostReduction = monthlyAgg.map(r => Number((r.cr / 1000000).toFixed(2)));
 
     State.charts.monthlyTrend = new Chart(ctx, {
       type: 'bar',
@@ -466,9 +476,9 @@ function renderMonthlyTrendChart() {
           },
           {
             label: 'มูลค่าต่อรองได้ (ล้านบาท)',
-            data: costReductionMB,
-            backgroundColor: costReductionMB.map(val => (val !== null && val < 0) ? 'rgba(244, 63, 94, 0.85)' : 'rgba(16, 185, 129, 0.75)'),
-            borderColor: costReductionMB.map(val => (val !== null && val < 0) ? '#f43f5e' : '#10b981'),
+            data: costReductionMB.map(v => (v !== null && v < 0) ? 0 : v),
+            backgroundColor: rawCostReduction.map(val => val < 0 ? 'rgba(244, 63, 94, 0.85)' : 'rgba(16, 185, 129, 0.75)'),
+            borderColor: rawCostReduction.map(val => val < 0 ? '#f43f5e' : '#10b981'),
             borderWidth: 1.5,
             borderRadius: 4,
             yAxisID: 'y1'
@@ -496,10 +506,15 @@ function renderMonthlyTrendChart() {
           tooltip: {
             callbacks: {
               label: (c) => {
-                if (c.raw === null || c.raw === undefined) return `${c.dataset.label}: ยังไม่มีข้อมูล (Pending)`;
-                const val = Number(c.raw);
-                if (val < 0) return `${c.dataset.label}: ปรับปรุงรายการ -฿${Math.abs(val)} ล้านบาท`;
-                return `${c.dataset.label}: ฿${val} ล้านบาท`;
+                const idx = c.dataIndex;
+                if (c.dataset.label === 'มูลค่าต่อรองได้ (ล้านบาท)') {
+                  const rawVal = rawCostReduction[idx];
+                  if (rawVal < 0) return `มูลค่าต่อรองได้: ปรับปรุงรายการ -฿${Math.abs(rawVal)} ล้านบาท`;
+                  if (purchaseValuesMB[idx] === null && rawVal === 0) return `มูลค่าต่อรองได้: ยังไม่มีข้อมูล`;
+                  return `มูลค่าต่อรองได้: ฿${rawVal} ล้านบาท`;
+                }
+                if (c.raw === null || c.raw === undefined) return `${c.dataset.label}: ยังไม่มีข้อมูล`;
+                return `${c.dataset.label}: ฿${c.raw} ล้านบาท`;
               }
             }
           }
@@ -522,6 +537,7 @@ function renderMonthlyTrendChart() {
             type: 'linear',
             position: 'right',
             beginAtZero: true,
+            min: 0,
             title: { display: true, text: 'ต่อรองได้ (ล้านบาท)', color: textColor, font: { family: 'Prompt', size: 11 } },
             ticks: { color: textColor },
             grid: { display: false }
