@@ -449,8 +449,8 @@ function renderMonthlyTrendChart() {
           {
             label: 'มูลค่าสั่งซื้อ (ล้านบาท)',
             data: purchaseValuesMB,
-            backgroundColor: 'rgba(59, 130, 246, 0.35)',
-            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(2, 132, 199, 0.35)',
+            borderColor: '#0284c7',
             borderWidth: 1.5,
             borderRadius: 4,
             yAxisID: 'y'
@@ -458,8 +458,8 @@ function renderMonthlyTrendChart() {
           {
             label: 'มูลค่าต่อรองได้ (ล้านบาท)',
             data: costReductionMB,
-            backgroundColor: 'rgba(16, 185, 129, 0.75)',
-            borderColor: '#10b981',
+            backgroundColor: costReductionMB.map(val => val < 0 ? 'rgba(244, 63, 94, 0.75)' : 'rgba(16, 185, 129, 0.75)'),
+            borderColor: costReductionMB.map(val => val < 0 ? '#f43f5e' : '#10b981'),
             borderWidth: 1.5,
             borderRadius: 4,
             yAxisID: 'y1'
@@ -472,6 +472,7 @@ function renderMonthlyTrendChart() {
             borderWidth: 2,
             borderDash: [4, 4],
             pointRadius: 2.5,
+            pointBackgroundColor: '#f59e0b',
             yAxisID: 'y1'
           }
         ]
@@ -482,19 +483,40 @@ function renderMonthlyTrendChart() {
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11 }, boxWidth: 12 } },
-          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ฿${c.raw} ล้านบาท` } }
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const val = Number(c.raw);
+                if (val < 0) return `${c.dataset.label}: ปรับปรุงรายการ -฿${Math.abs(val)} ล้านบาท`;
+                if (val === 0) return `${c.dataset.label}: ฿0.00 (ยังไม่มีข้อมูล)`;
+                return `${c.dataset.label}: ฿${val} ล้านบาท`;
+              }
+            }
+          }
         },
         scales: {
-          x: { ticks: { color: textColor, font: { family: 'Prompt' } }, grid: { display: false } },
+          x: {
+            ticks: { color: textColor, font: { family: 'Prompt' } },
+            grid: { display: false }
+          },
           y: {
-            type: 'linear', position: 'left',
+            type: 'linear',
+            position: 'left',
+            beginAtZero: true,
+            min: 0,
             title: { display: true, text: 'มูลค่าสั่งซื้อ (ล้านบาท)', color: textColor, font: { family: 'Prompt', size: 11 } },
-            ticks: { color: textColor }, grid: { color: gridColor }
+            ticks: { color: textColor },
+            grid: { color: gridColor }
           },
           y1: {
-            type: 'linear', position: 'right',
+            type: 'linear',
+            position: 'right',
             title: { display: true, text: 'ต่อรองได้ (ล้านบาท)', color: textColor, font: { family: 'Prompt', size: 11 } },
-            ticks: { color: textColor }, grid: { drawOnChartArea: false }
+            ticks: { color: textColor },
+            grid: {
+              color: (context) => (context.tick && context.tick.value === 0) ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+              lineWidth: (context) => (context.tick && context.tick.value === 0) ? 1.5 : 1
+            }
           }
         }
       }
