@@ -1465,41 +1465,42 @@ function updateChartsTheme() {
 // ==========================================================================
 
 const GSHEET_STORAGE_KEY = 'qtc_gsheet_config';
+const DEFAULT_GSHEET_URL = 'https://docs.google.com/spreadsheets/d/1iVgKgCdQRCz4_Vo1mdmM38xJHQI4B5mzKx7aJ9oBKn0/edit?usp=sharing';
 
 function initGoogleSheetSync() {
   const saved = localStorage.getItem(GSHEET_STORAGE_KEY);
-  if (!saved) return;
+  let config = { url: DEFAULT_GSHEET_URL, autoSync: true };
 
-  try {
-    const config = JSON.parse(saved);
-    const urlInput = document.getElementById('gsheet-url-input');
-    const sheetNameInput = document.getElementById('gsheet-sheet-name');
-    const apiKeyInput = document.getElementById('gsheet-api-key');
-    const autoSyncCheck = document.getElementById('gsheet-auto-sync');
-
-    if (urlInput && config.url) urlInput.value = config.url;
-    if (sheetNameInput && config.sheetName) sheetNameInput.value = config.sheetName;
-    if (apiKeyInput && config.apiKey) apiKeyInput.value = config.apiKey;
-    if (autoSyncCheck && config.autoSync !== undefined) autoSyncCheck.checked = config.autoSync;
-
-    const badge = document.getElementById('gsheet-status-badge');
-    if (badge && config.lastSync) {
-      badge.textContent = `🟢 เชื่อมต่อแล้ว (${config.lastSync})`;
-      badge.className = 'tier-tag tier-high';
+  if (saved) {
+    try {
+      config = { ...config, ...JSON.parse(saved) };
+    } catch (err) {
+      console.error('Error parsing config:', err);
     }
+  }
 
-    if (config.autoSync && config.url) {
-      console.log('🔄 Auto-syncing from Google Sheets...');
-      syncGoogleSheetNow(false);
-    }
-  } catch (err) {
-    console.error('Error loading Google Sheet config:', err);
+  const urlInput = document.getElementById('gsheet-url-input');
+  const autoSyncCheck = document.getElementById('gsheet-auto-sync');
+
+  if (urlInput) urlInput.value = config.url || DEFAULT_GSHEET_URL;
+  if (autoSyncCheck && config.autoSync !== undefined) autoSyncCheck.checked = config.autoSync;
+
+  const badge = document.getElementById('gsheet-status-badge');
+  if (badge) {
+    badge.textContent = `🟢 เชื่อมต่อ QTC Sheet สด`;
+    badge.className = 'tier-tag tier-high';
+  }
+
+  // ดึงข้อมูลสดจาก Google Sheet อัตโนมัติทันทีที่เปิดเว็บ
+  if (config.autoSync) {
+    console.log('🔄 Auto-syncing live from embedded Google Sheet...');
+    syncGoogleSheetNow(false);
   }
 }
 
 function extractGoogleSheetInfo(input) {
-  if (!input) return { sheetId: '', gid: '' };
-  const trimmed = input.trim();
+  const src = (input && input.trim()) ? input.trim() : DEFAULT_GSHEET_URL;
+  const trimmed = src.trim();
   
   // Extract Sheet ID
   let sheetId = trimmed;
