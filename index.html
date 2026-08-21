@@ -117,6 +117,12 @@
             <button class="pill-btn" data-quarter="Q4">Q4</button>
           </div>
 
+          <!-- ปุ่มซิงค์ข้อมูล Google Sheet ด่วน -->
+          <button class="pill-btn" id="topbar-sync-btn" onclick="syncGoogleSheetNow()" title="ซิงค์ข้อมูลล่าสุดจาก Google Sheets" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 4px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span id="topbar-sync-label">ซิงค์สด</span>
+          </button>
+
           <!-- พิมพ์รายงานด่วน -->
           <button class="icon-btn" onclick="window.print()" title="พิมพ์รายงานสรุป (Print)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -587,10 +593,63 @@
 
         <!-- ================= VIEW 7: จัดการข้อมูล (DATA IMPORT/EXPORT) ================= -->
         <section class="view-section" id="view-data-import">
+          <!-- Google Sheets Live Sync Box -->
+          <div class="card-box" style="margin-bottom: 20px; border-color: rgba(16, 185, 129, 0.4);">
+            <div class="card-header-bar">
+              <div>
+                <div class="card-header-title" style="color: var(--accent-emerald);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  ซิงค์ข้อมูลสดจาก Google Sheets (Live Sync)
+                </div>
+                <div class="card-header-sub">เชื่อมต่อกับ Google Sheet เพื่อดึงข้อมูลรายการสั่งซื้อและส่วนลดล่าสุดอัตโนมัติ</div>
+              </div>
+              <span class="tier-tag tier-high" id="gsheet-status-badge">⚪ ยังไม่ได้เชื่อมต่อ</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+              <div class="form-field-group">
+                <label for="gsheet-url-input">Google Sheet URL หรือ Sheet ID <span style="color:var(--accent-emerald);">*</span></label>
+                <input type="text" id="gsheet-url-input" placeholder="วางลิงก์ Google Sheet ที่นี่ เช่น https://docs.google.com/spreadsheets/d/1aBcDeF.../edit">
+                <small style="color: var(--text-muted); font-size: 11px; margin-top: 3px; display: block;">
+                  💡 แนะนำ: กดปุ่ม "แชร์ (Share)" ใน Google Sheet แล้วตั้งเป็น <b>"ทุกคนที่มีลิงก์มีสิทธิ์ดู (Anyone with link can view)"</b>
+                </small>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-field-group">
+                  <label for="gsheet-sheet-name">ชื่อแท็บ Sheet (Sheet Name)</label>
+                  <input type="text" id="gsheet-sheet-name" placeholder="เช่น Data หรือ Improve#1" value="Data">
+                </div>
+                <div class="form-field-group">
+                  <label for="gsheet-api-key">Google API Key (ไม่บังคับ)</label>
+                  <input type="text" id="gsheet-api-key" placeholder="ใส่เฉพาะกรณีใช้ API Key ของ Google Cloud">
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="checkbox" id="gsheet-auto-sync" checked style="width: 16px; height: 16px; cursor: pointer;">
+                <label for="gsheet-auto-sync" style="font-size: 12px; color: var(--text-primary); cursor: pointer;">
+                  ซิงค์ข้อมูลสดอัตโนมัติทุกครั้งที่เปิดหน้านี้ (Auto Sync on Load)
+                </label>
+              </div>
+
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px;">
+                <button class="btn-action btn-action-primary" id="btn-sync-gsheet" onclick="syncGoogleSheetNow()" style="background: var(--accent-emerald);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                  บันทึกและซิงค์ข้อมูลสดเดี๋ยวนี้ (Sync Now)
+                </button>
+                <button class="btn-action btn-action-secondary" onclick="clearGoogleSheetSettings()">
+                  ล้างการตั้งค่า
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Excel Drag and Drop -->
           <div class="card-box" style="margin-bottom: 20px;">
             <div class="card-header-bar">
               <div>
-                <div class="card-header-title">อัปโหลดไฟล์ Excel (.xlsx) เพื่ออัปเดตข้อมูล</div>
+                <div class="card-header-title">อัปโหลดไฟล์ Excel (.xlsx) แบบออฟไลน์</div>
                 <div class="card-header-sub">ลากและวางไฟล์ข้อมูลชุดใหม่เพื่อประมวลผลบนแดชบอร์ดทันที (ประมวลผลในเครื่อง ปลอดภัย 100%)</div>
               </div>
             </div>
@@ -603,6 +662,7 @@
             </div>
           </div>
 
+          <!-- Export Section -->
           <div class="card-box">
             <div class="card-header-bar">
               <div>

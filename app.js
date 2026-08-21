@@ -1443,3 +1443,220 @@ function updateChartsTheme() {
   renderStrategyDonutChart(getActiveScopeTransactions());
   renderMultiYearChart();
 }
+
+// ==========================================================================
+// ระบบซิงค์ข้อมูลสดจาก Google Sheets (Live Sync Engine)
+// ==========================================================================
+
+const GSHEET_STORAGE_KEY = 'qtc_gsheet_config';
+
+function initGoogleSheetSync() {
+  const saved = localStorage.getItem(GSHEET_STORAGE_KEY);
+  if (!saved) return;
+
+  try {
+    const config = JSON.parse(saved);
+    const urlInput = document.getElementById('gsheet-url-input');
+    const sheetNameInput = document.getElementById('gsheet-sheet-name');
+    const apiKeyInput = document.getElementById('gsheet-api-key');
+    const autoSyncCheck = document.getElementById('gsheet-auto-sync');
+
+    if (urlInput && config.url) urlInput.value = config.url;
+    if (sheetNameInput && config.sheetName) sheetNameInput.value = config.sheetName;
+    if (apiKeyInput && config.apiKey) apiKeyInput.value = config.apiKey;
+    if (autoSyncCheck && config.autoSync !== undefined) autoSyncCheck.checked = config.autoSync;
+
+    const badge = document.getElementById('gsheet-status-badge');
+    if (badge && config.lastSync) {
+      badge.textContent = `🟢 เชื่อมต่อแล้ว (${config.lastSync})`;
+      badge.className = 'tier-tag tier-high';
+    }
+
+    if (config.autoSync && config.url) {
+      console.log('🔄 Auto-syncing from Google Sheets...');
+      syncGoogleSheetNow(false);
+    }
+  } catch (err) {
+    console.error('Error loading Google Sheet config:', err);
+  }
+}
+
+function extractGoogleSheetId(input) {
+  if (!input) return '';
+  const trimmed = input.trim();
+  const match = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (match && match[1]) return match[1];
+  return trimmed; // อาจเป็น Sheet ID โดยตรง
+}
+
+window.syncGoogleSheetNow = async function(showAlert = true) {
+  const urlInput = document.getElementById('gsheet-url-input')?.value.trim() || '';
+  const sheetName = document.getElementById('gsheet-sheet-name')?.value.trim() || 'Data';
+  const apiKey = document.getElementById('gsheet-api-key')?.value.trim() || '';
+  const autoSync = document.getElementById('gsheet-auto-sync')?.checked ?? true;
+
+  const sheetId = extractGoogleSheetId(urlInput);
+  if (!sheetId) {
+    if (showAlert) {
+      alert('กรุณากรอก Google Sheet URL หรือ Sheet ID ในหน้า "จัดการไฟล์ข้อมูล Excel"');
+      switchView('data-import');
+    }
+    return;
+  }
+
+  const syncBtn = document.getElementById('btn-sync-gsheet');
+  const topbarLabel = document.getElementById('topbar-sync-label');
+  const badge = document.getElementById('gsheet-status-badge');
+
+  if (syncBtn) syncBtn.disabled = true;
+  if (topbarLabel) topbarLabel.textContent = 'กำลังซิงค์...';
+  if (badge) badge.textContent = '⏳ กำลังดึงข้อมูล...';
+
+  try {
+    let rows = [];
+
+    if (apiKey) {
+      // 1. ดึงผ่าน Google Sheets API v4
+      const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}`;
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error(`Google API Error: ${res.status} ${res.statusText}`);
+      const json = await res.json();
+      const rawValues = json.values || [];
+      if (rawValues.length < 2) throw new Error('ไม่พบข้อมูลใน Sheet ที่ระบุ');
+
+      const headers = rawValues[0].map(h => String(h || '').trim());
+      rows = rawValues.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = r[idx] ?? ''; });
+        return obj;
+      });
+    } else {
+      // 2. ดึงผ่าน Google Visualization / CSV Export (สำหรับชีตที่เปิดสิทธิ์ดูได้)
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error(`ไม่สามารถเข้าถึง Google Sheet ได้ (โปรดตรวจสอบการเปิดสิทธิ์แชร์แบบดูได้)`);
+      const csvText = await res.text();
+
+      if (typeof XLSX !== 'undefined') {
+        const workbook = XLSX.read(csvText, { type: 'string' });
+        const firstSheet = workbook.SheetNames[0];
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+      } else {
+        throw new Error('SheetJS library is not available');
+      }
+    }
+
+    if (!rows || rows.length === 0) {
+      throw new Error('ไม่พบรายการข้อมูลใน Google Sheet');
+    }
+
+    // แปลงแถวข้อมูลเป็นรูปแบบ Transaction มาตรฐาน
+    const parsedTransactions = rows.map((r, idx) => {
+      const yr = String(r['Year'] || r['year'] || r['ปี'] || '2026');
+      const mo = String(r['Month'] || r['month'] || r['เดือน'] || 'JAN').toUpperCase().slice(0, 3);
+      const po = String(r['PO No.'] || r['PO No'] || r['poNo'] || r['PO'] || `PO-${idx + 1}`);
+      const supp = String(r['Supplier'] || r['supplier'] || r['ซัพพลายเออร์'] || r['ชื่อคู่ค้า'] || 'ไม่ระบุ');
+      const desc = String(r['Item Description'] || r['description'] || r['รายละเอียด'] || '');
+      const qty = parseFloat(r['Qty'] || r['qty'] || r['จำนวน'] || 0) || 0;
+      const unit = String(r['Unit'] || r['unit'] || r['หน่วย'] || 'EA');
+      const minPrice = parseFloat(r['Min Unit Price'] || r['minUnitPrice'] || 0) || 0;
+      const totalPrice = parseFloat(r['Total Price'] || r['totalPrice'] || (qty * minPrice) || 0) || 0;
+      const negPrice = parseFloat(r['Negotiated Unit Price'] || r['negotiatedUnitPrice'] || minPrice) || minPrice;
+      const unitDiff = parseFloat(r['Unit Difference'] || r['unitDifference'] || (minPrice - negPrice)) || 0;
+      const totalSaving = parseFloat(r['Total Saving'] || r['totalSaving'] || (unitDiff * qty)) || 0;
+      const pctDisc = totalPrice > 0 ? (totalSaving / totalPrice) : 0;
+      const method = String(r['Method'] || r['method'] || r['กลยุทธ์'] || 'Negotiate').trim();
+      const pic = String(r['PIC'] || r['pic'] || r['ผู้รับผิดชอบ'] || 'ไม่ระบุ').trim();
+
+      return {
+        id: `gs-${idx + 1}`,
+        globalId: `gs-${idx + 1}`,
+        year: yr,
+        month: mo,
+        poNo: po,
+        supplier: supp,
+        description: desc,
+        qty: qty,
+        unit: unit,
+        minUnitPrice: minPrice,
+        totalPrice: totalPrice,
+        negotiatedUnitPrice: negPrice,
+        unitDifference: unitDiff,
+        totalSaving: totalSaving,
+        percentDiscount: pctDisc,
+        strategy: method,
+        method: method,
+        pic: pic
+      };
+    });
+
+    // อัปเดตข้อมูลในระบบ
+    State.transactions = parsedTransactions;
+    filterTransactions();
+    renderAllViews();
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
+
+    // บันทึกการตั้งค่า
+    localStorage.setItem(GSHEET_STORAGE_KEY, JSON.stringify({
+      url: urlInput,
+      sheetName: sheetName,
+      apiKey: apiKey,
+      autoSync: autoSync,
+      lastSync: timeStr
+    }));
+
+    if (badge) {
+      badge.textContent = `🟢 ซิงค์สดสำเร็จ (${timeStr})`;
+      badge.className = 'tier-tag tier-high';
+    }
+    if (topbarLabel) {
+      topbarLabel.textContent = `ซิงค์แล้ว (${timeStr})`;
+    }
+
+    if (showAlert) {
+      alert(`✅ ซิงค์ข้อมูลสำเร็จ!\nโหลดข้อมูลจาก Google Sheet ทั้งหมด ${parsedTransactions.length.toLocaleString()} รายการ`);
+    }
+  } catch (err) {
+    console.error('Google Sheet Sync Error:', err);
+    if (badge) {
+      badge.textContent = `🔴 เกิดข้อผิดพลาด`;
+      badge.className = 'tier-tag tier-low';
+    }
+    if (topbarLabel) {
+      topbarLabel.textContent = 'ซิงค์ไม่สำเร็จ';
+    }
+    if (showAlert) {
+      alert(`❌ ไม่สามารถซิงค์ข้อมูลได้:\n${err.message}\n\nคำแนะนำ: กรุณาตรวจสอบว่า Google Sheet เปิดแชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู" แล้วหรือยัง`);
+    }
+  } finally {
+    if (syncBtn) syncBtn.disabled = false;
+  }
+};
+
+window.clearGoogleSheetSettings = function() {
+  if (confirm('คุณต้องการล้างการตั้งค่า Google Sheet หรือไม่?')) {
+    localStorage.removeItem(GSHEET_STORAGE_KEY);
+    const urlInput = document.getElementById('gsheet-url-input');
+    const sheetNameInput = document.getElementById('gsheet-sheet-name');
+    const apiKeyInput = document.getElementById('gsheet-api-key');
+    if (urlInput) urlInput.value = '';
+    if (sheetNameInput) sheetNameInput.value = 'Data';
+    if (apiKeyInput) apiKeyInput.value = '';
+    const badge = document.getElementById('gsheet-status-badge');
+    if (badge) {
+      badge.textContent = '⚪ ยังไม่ได้เชื่อมต่อ';
+      badge.className = 'tier-tag tier-high';
+    }
+    const topbarLabel = document.getElementById('topbar-sync-label');
+    if (topbarLabel) topbarLabel.textContent = 'ซิงค์สด';
+    alert('ล้างการตั้งค่าเรียบร้อยแล้ว');
+  }
+};
+
+// เพิ่มการเรียก initGoogleSheetSync ตอนเริ่มทำงาน
+document.addEventListener('DOMContentLoaded', () => {
+  initGoogleSheetSync();
+});
+
