@@ -136,7 +136,10 @@ function setupDataset() {
   const historical = State.data.historicalTransactions || [];
   
   State.transactions = [...recent, ...historical].map((item, idx) => {
-    const rawStrat = (item.strategy || item.method || 'Negotiate').trim();
+    // ใช้คอลัมน์ Method เป็นกลยุทธ์หลัก และเก็บข้อความหมายเหตุสีแดงไว้ใน remark
+    const officialMethod = (item.method || item.strategy || 'Negotiate').trim();
+    const remarkNote = (item.strategy && item.strategy !== officialMethod) ? item.strategy.trim() : '';
+
     return {
       ...item,
       globalId: item.id || `rec-${idx}`,
@@ -147,8 +150,8 @@ function setupDataset() {
       percentDiscount: Number(item.percentDiscount) || 0,
       qty: Number(item.qty) || 0,
       pic: (item.pic || 'ไม่ระบุ').trim(),
-      rawStrategy: rawStrat,
-      strategy: rawStrat
+      strategy: officialMethod,
+      remark: remarkNote
     };
   });
 
