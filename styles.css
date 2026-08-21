@@ -1,41 +1,48 @@
 /* ==========================================================================
-   ระบบแดชบอร์ดจัดซื้อและติดตาม KPI - ดีไซน์หรูหรา เรียบง่าย สบายตา (Executive Clean UX/UI)
-   100% Fully Responsive & No Overflow Bugs
+   QTC ENERGY PCL - ระบบแดชบอร์ดจัดซื้อและติดตามส่วนลดซัพพลายเออร์
+   Corporate Brand Theme (QTC Blue & Energetic Orange Accents)
    ========================================================================== */
 
 :root {
   /* โทนสีธีมมืด (Dark Mode - Default) */
-  --bg-base: #0c1017;
-  --bg-surface: #131b26;
-  --bg-surface-elevated: #1a2434;
-  --bg-card: rgba(19, 27, 38, 0.85);
-  --bg-card-hover: rgba(26, 36, 52, 0.95);
+  --bg-base: #0a0e17;
+  --bg-surface: #111724;
+  --bg-surface-elevated: #182235;
+  --bg-card: rgba(17, 23, 36, 0.88);
+  --bg-card-hover: rgba(24, 34, 53, 0.95);
   --bg-input: rgba(255, 255, 255, 0.05);
   --bg-glass: rgba(255, 255, 255, 0.03);
 
   --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-focus: #3b82f6;
+  --border-focus: #0077b6;
   --border-card: rgba(255, 255, 255, 0.09);
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
 
-  /* สีหลักและสถานะ */
-  --accent-primary: #3b82f6;
-  --accent-primary-light: #60a5fa;
+  /* สีประจำองค์กร QTC Energy */
+  --qtc-blue: #00558f;
+  --qtc-blue-light: #0284c7;
+  --qtc-orange: #f15a29;
+  --qtc-orange-light: #ff7844;
+
+  --accent-primary: #0284c7;
+  --accent-primary-hover: #0369a1;
   --accent-emerald: #10b981;
   --accent-emerald-bg: rgba(16, 185, 129, 0.12);
+  --accent-orange: #f15a29;
+  --accent-orange-bg: rgba(241, 90, 41, 0.12);
   --accent-cyan: #06b6d4;
   --accent-cyan-bg: rgba(6, 182, 212, 0.12);
   --accent-amber: #f59e0b;
   --accent-amber-bg: rgba(245, 158, 11, 0.12);
   --accent-rose: #f43f5e;
   --accent-rose-bg: rgba(244, 63, 94, 0.12);
-  --accent-purple: #a855f7;
 
-  /* ไล่ระดับสี */
-  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  /* ไล่ระดับสี QTC */
+  --gradient-primary: linear-gradient(135deg, #00558f 0%, #0284c7 100%);
+  --gradient-orange: linear-gradient(135deg, #f15a29 0%, #ff8c42 100%);
   --gradient-emerald: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
   --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
 
@@ -45,25 +52,25 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
   
-  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
 
   --font-main: 'Prompt', 'Plus Jakarta Sans', sans-serif;
   --font-display: 'Prompt', 'Outfit', sans-serif;
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --sidebar-width: 250px;
+  --sidebar-width: 255px;
 }
 
 [data-theme="light"] {
-  --bg-base: #f1f5f9;
+  --bg-base: #f4f7fb;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #f8fafc;
   --bg-card: rgba(255, 255, 255, 0.95);
   --bg-card-hover: #ffffff;
-  --bg-input: #f8fafc;
+  --bg-input: #f1f5f9;
   --bg-glass: rgba(0, 0, 0, 0.02);
 
   --border-subtle: rgba(0, 0, 0, 0.07);
@@ -74,6 +81,7 @@
   --text-muted: #94a3b8;
 
   --accent-emerald-bg: rgba(16, 185, 129, 0.08);
+  --accent-orange-bg: rgba(241, 90, 41, 0.08);
   --accent-amber-bg: rgba(245, 158, 11, 0.08);
   --accent-rose-bg: rgba(244, 63, 94, 0.08);
 
@@ -126,35 +134,50 @@ html, body {
 }
 
 .sidebar-header {
-  padding: 18px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  padding: 16px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.brand-icon {
-  width: 36px;
-  height: 36px;
+.qtc-brand-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.logo-box {
+  background: #ffffff;
   border-radius: var(--radius-sm);
-  background: var(--gradient-primary);
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.brand-info h1 {
-  font-size: 14.5px;
+.qtc-logo-img {
+  height: 28px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.brand-text-block {
+  display: flex;
+  flex-direction: column;
+  padding-left: 2px;
+}
+
+.company-name {
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
-.brand-info p {
+.system-tag {
   font-size: 10.5px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .sidebar-nav {
@@ -194,9 +217,10 @@ html, body {
 }
 
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(2, 132, 199, 0.12);
   color: var(--accent-primary);
   font-weight: 600;
+  border-left: 3px solid var(--accent-primary);
 }
 
 .nav-item svg {
@@ -206,7 +230,7 @@ html, body {
 }
 
 .sidebar-footer {
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -220,7 +244,7 @@ html, body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--gradient-emerald);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -246,7 +270,7 @@ html, body {
   margin-left: var(--sidebar-width);
   width: calc(100% - var(--sidebar-width));
   max-width: calc(100% - var(--sidebar-width));
-  min-width: 0; /* CRITICAL: Prevents overflow */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -340,7 +364,7 @@ html, body {
 .pill-btn.active {
   background: var(--accent-primary);
   color: #fff;
-  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35);
 }
 
 .icon-btn {
@@ -410,8 +434,12 @@ html, body {
 .kpi-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(59, 130, 246, 0.3);
 }
+
+.kpi-card.accent-glow-emerald:hover { border-color: rgba(16, 185, 129, 0.35); }
+.kpi-card.accent-glow-blue:hover { border-color: rgba(2, 132, 199, 0.35); }
+.kpi-card.accent-glow-orange:hover { border-color: rgba(241, 90, 41, 0.35); }
+.kpi-card.accent-glow-amber:hover { border-color: rgba(245, 158, 11, 0.35); }
 
 .kpi-card-header {
   display: flex;
@@ -690,7 +718,7 @@ html, body {
 
 .pic-compact-row:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(2, 132, 199, 0.3);
 }
 
 .pic-compact-meta {
@@ -705,7 +733,7 @@ html, body {
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(2, 132, 199, 0.15);
   color: var(--accent-primary);
   flex-shrink: 0;
 }
@@ -836,7 +864,7 @@ html, body {
 }
 
 .btn-action-primary:hover {
-  background: #2563eb;
+  background: var(--accent-primary-hover);
 }
 
 .btn-action-secondary {
@@ -1144,7 +1172,7 @@ html, body {
 }
 
 .dropzone-container:hover {
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(2, 132, 199, 0.05);
 }
 
 .dropzone-container svg {
@@ -1163,7 +1191,6 @@ html, body {
   cursor: pointer;
 }
 
-/* Responsive Breakpoints */
 @media (max-width: 900px) {
   .sidebar {
     transform: translateX(-100%);
