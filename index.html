@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procurement KPI & Supplier Discount Dashboard</title>
+  <meta name="description" content="Executive Procurement KPI, Cost Reduction and Supplier Discount Management Dashboard">
+  
+  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js & SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1>ProcureKPI</h1>
+          <p>Discount & Saving Hub</p>
+        </div>
+      </div>
+
+      <div class="sidebar-nav">
+        <span class="nav-label">Analytics & Overview</span>
+        <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Executive Overview
+        </a>
+        <a class="nav-item" data-view="kpi-tracking" id="nav-kpi-tracking">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Monthly & Yearly KPI
+        </a>
+        <a class="nav-item" data-view="transactions" id="nav-transactions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          PO & Transactions
+        </a>
+
+        <span class="nav-label">Team & Suppliers</span>
+        <a class="nav-item" data-view="suppliers" id="nav-suppliers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Supplier Intelligence
+        </a>
+        <a class="nav-item" data-view="pic-team" id="nav-pic-team">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          PIC Leaderboard
+        </a>
+
+        <span class="nav-label">Tools & Calculations</span>
+        <a class="nav-item" data-view="simulators" id="nav-simulators">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+          Kaizen & Credit Simulator
+        </a>
+        <a class="nav-item" data-view="data-import" id="nav-data-import">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Data Import / Export
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">PU</div>
+          <div class="user-meta">
+            <div class="user-name">Procurement Team</div>
+            <div class="user-role">QTC / Sailun Group</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+      <!-- Top Sticky Navigation Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-toggle" aria-label="Toggle menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="page-title">
+            <h2 id="current-view-title">Executive Overview</h2>
+            <p id="current-view-desc">Procurement cost reduction metrics and supplier discount analysis</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Global Year Switcher -->
+          <div class="quick-filter-group" id="year-filter-group">
+            <button class="quick-btn active" data-year="2026">2026 (FY2568)</button>
+            <button class="quick-btn" data-year="2025">2025</button>
+            <button class="quick-btn" data-year="2024">2024</button>
+            <button class="quick-btn" data-year="2023">2023</button>
+            <button class="quick-btn" data-year="ALL">All Years</button>
+          </div>
+
+          <!-- Theme Toggle -->
+          <button class="icon-btn" id="theme-toggle-btn" title="Toggle Dark/Light Mode">
+            <svg id="theme-moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg id="theme-sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <main class="content-container">
+
+        <!-- ================= VIEW 1: EXECUTIVE DASHBOARD ================= -->
+        <section class="view-section active" id="view-dashboard">
+          <!-- Top KPI Metric Cards -->
+          <div class="kpi-grid">
+            <div class="kpi-card accent-emerald">
+              <div class="kpi-header">
+                <span class="kpi-title">Total Cost Reduction</span>
+                <div class="kpi-icon-badge">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpi-total-savings">฿0.00</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtext" id="kpi-savings-mb">0.00 MB</span>
+                <span class="kpi-pill success" id="kpi-savings-rate">+0.0% Saving</span>
+              </div>
+            </div>
+
+            <div class="kpi-card accent-cyan">
+              <div class="kpi-header">
+                <span class="kpi-title">Total Purchase Value</span>
+                <div class="kpi-icon-badge">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpi-total-purchase">฿0.00</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtext" id="kpi-purchase-mb">0.00 MB</span>
+                <span class="kpi-pill" id="kpi-po-count">0 Transactions</span>
+              </div>
+            </div>
+
+            <div class="kpi-card accent-purple">
+              <div class="kpi-header">
+                <span class="kpi-title">KPI Target Status (3.0%)</span>
+                <div class="kpi-icon-badge">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpi-target-pct">0.00%</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtext" id="kpi-target-diff">Target: 3.00%</span>
+                <span class="kpi-pill success" id="kpi-target-badge">ได้ตามเป้าหมาย</span>
+              </div>
+            </div>
+
+            <div class="kpi-card accent-amber">
+              <div class="kpi-header">
+                <span class="kpi-title">Extend Credit Savings</span>
+                <div class="kpi-icon-badge">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpi-credit-savings">฿85,669.64</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtext">Interest Rate @ 4.25% p.a.</span>
+                <span class="kpi-pill success">Accounting Gain</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Visual Charts -->
+          <div class="charts-grid">
+            <!-- Monthly Trends Chart -->
+            <div class="dashboard-card">
+              <div class="card-title-bar">
+                <div>
+                  <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                    Monthly Cost Reduction vs 3% KPI Target
+                  </h3>
+                  <div class="card-subtitle">Monthly purchasing volume and negotiated savings comparison</div>
+                </div>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="monthlyTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Strategy Donut Chart -->
+            <div class="dashboard-card">
+              <div class="card-title-bar">
+                <div>
+                  <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10h-10z"/></svg>
+                    Procurement Strategies
+                  </h3>
+                  <div class="card-subtitle">Discount negotiation methods share</div>
+                </div>
+              </div>
+              <div class="chart-wrapper" style="min-height: 200px;">
+                <canvas id="strategyDonutChart"></canvas>
+              </div>
+              <div class="strategy-list" id="strategy-breakdown-list">
+                <!-- Dynamically Populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- PIC Performance & Top Suppliers -->
+          <div class="two-col-grid">
+            <!-- PIC Leaderboard Overview -->
+            <div class="dashboard-card">
+              <div class="card-title-bar">
+                <div>
+                  <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                    Procurement Officer Rankings
+                  </h3>
+                  <div class="card-subtitle">Contribution by buyer (Person in Charge)</div>
+                </div>
+                <button class="btn btn-secondary" onclick="switchView('pic-team')">View All</button>
+              </div>
+              <div class="chart-wrapper" style="min-height: 220px;">
+                <canvas id="picPerformanceChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Top 5 Suppliers by Savings -->
+            <div class="dashboard-card">
+              <div class="card-title-bar">
+                <div>
+                  <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                    Top Cost-Saving Suppliers
+                  </h3>
+                  <div class="card-subtitle">Highest cost reductions achieved</div>
+                </div>
+                <button class="btn btn-secondary" onclick="switchView('suppliers')">All Suppliers</button>
+              </div>
+              <div class="strategy-list" id="top-suppliers-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 2: MONTHLY & YEARLY KPI ================= -->
+        <section class="view-section" id="view-kpi-tracking">
+          <div class="dashboard-card" style="margin-bottom: 24px;">
+            <div class="card-title-bar">
+              <div>
+                <h3>Monthly KPI Performance & Target Variance Matrix</h3>
+                <div class="card-subtitle">Comparison against 3% Cost Reduction Target (ปี 2026 / 2021)</div>
+              </div>
+              <button class="btn btn-primary" onclick="exportMonthlyKPIToCSV()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+              </button>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="modern-table" id="monthly-kpi-table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Purchase Value (THB)</th>
+                    <th>Cost Reduction (THB)</th>
+                    <th>Target (3.0%)</th>
+                    <th>Actual % Saving</th>
+                    <th>Variance vs Target</th>
+                    <th>Status</th>
+                    <th>Credit Extend Saving</th>
+                  </tr>
+                </thead>
+                <tbody id="monthly-kpi-tbody">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Multi-Year Comparison -->
+          <div class="two-col-grid">
+            <div class="dashboard-card">
+              <div class="card-title-bar">
+                <div>
+                  <h3>Multi-Year Cost Savings Trend (2023 - 2026)</h3>
+                  <div class="card-subtitle">Annual cost reduction progression in Million THB</div>
+                </div>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="multiYearChart"></canvas>
+              </div>
+            </div>
+
+            <div class="dashboard-card">
+              <div class="card-title-bar">
+                <div>
+                  <h3>Credit Terms Saving Analysis</h3>
+                  <div class="card-subtitle">Payment terms extension financial impact @ 4.25% p.a.</div>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Days Extended</th>
+                      <th>PO Value (THB)</th>
+                      <th>Accounting Saving (THB)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="credit-extension-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 3: TRANSACTION EXPLORER ================= -->
+        <section class="view-section" id="view-transactions">
+          <!-- Filter Controls -->
+          <div class="filter-bar">
+            <div class="filter-inputs">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="tx-search-input" placeholder="Search PO, Supplier, Item description...">
+              </div>
+              <select class="custom-select" id="filter-tx-month">
+                <option value="ALL">All Months</option>
+                <option value="JAN">JAN</option>
+                <option value="FEB">FEB</option>
+                <option value="MAR">MAR</option>
+                <option value="APR">APR</option>
+                <option value="MAY">MAY</option>
+                <option value="JUN">JUN</option>
+                <option value="JUL">JUL</option>
+                <option value="AUG">AUG</option>
+                <option value="SEP">SEP</option>
+                <option value="OCT">OCT</option>
+                <option value="NOV">NOV</option>
+                <option value="DEC">DEC</option>
+              </select>
+              <select class="custom-select" id="filter-tx-pic">
+                <option value="ALL">All PICs</option>
+                <option value="Pawina">Pawina (ปวิณา)</option>
+                <option value="Tanida">Tanida (ธนิดา)</option>
+                <option value="Yuwanit">Yuwanit (ยุวนิต)</option>
+                <option value="Dusit">Dusit (ดุสิต)</option>
+                <option value="Saniya">Saniya (ศานิยา)</option>
+              </select>
+              <select class="custom-select" id="filter-tx-strategy">
+                <option value="ALL">All Strategies</option>
+                <option value="Compare + Negotiate">Compare + Negotiate</option>
+                <option value="Negotiate">Negotiate</option>
+                <option value="Avoidance">Avoidance</option>
+                <option value="Rebate">Rebate</option>
+                <option value="เพิ่มเครดิต">เพิ่มเครดิต (Extend Credit)</option>
+              </select>
+            </div>
+            <div class="filter-actions">
+              <button class="btn btn-secondary" id="reset-filter-btn">Reset</button>
+              <button class="btn btn-primary" id="export-tx-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export Excel
+              </button>
+            </div>
+          </div>
+
+          <!-- Transaction Table -->
+          <div class="table-container">
+            <div class="table-responsive">
+              <table class="modern-table" id="transaction-data-table">
+                <thead>
+                  <tr>
+                    <th class="sortable" data-sort="month">Month</th>
+                    <th class="sortable" data-sort="poNo">PO No.</th>
+                    <th class="sortable" data-sort="supplier">Supplier Name</th>
+                    <th>Description</th>
+                    <th class="sortable" data-sort="qty">Qty</th>
+                    <th>Unit</th>
+                    <th class="sortable" data-sort="totalPrice">Total Price (THB)</th>
+                    <th class="sortable" data-sort="totalSaving">Total Saving (THB)</th>
+                    <th class="sortable" data-sort="percentDiscount">% Discount</th>
+                    <th>Strategy</th>
+                    <th class="sortable" data-sort="pic">PIC</th>
+                  </tr>
+                </thead>
+                <tbody id="transaction-tbody">
+                  <!-- Populated via Javascript -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination Bar -->
+            <div class="pagination-bar">
+              <div id="pagination-info">Showing 0 to 0 of 0 transactions</div>
+              <div class="pagination-controls">
+                <button class="page-btn" id="btn-prev-page" title="Previous Page">‹</button>
+                <div id="page-numbers" style="display:flex;gap:4px;"></div>
+                <button class="page-btn" id="btn-next-page" title="Next Page">›</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 4: SUPPLIERS ================= -->
+        <section class="view-section" id="view-suppliers">
+          <div class="dashboard-card" style="margin-bottom: 24px;">
+            <div class="card-title-bar">
+              <div>
+                <h3>Supplier Analytics & Savings Ranking</h3>
+                <div class="card-subtitle">Comprehensive breakdown of volume and discounts by vendor</div>
+              </div>
+              <div class="search-box" style="max-width: 320px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="supplier-search-input" placeholder="Search supplier name...">
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="modern-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Supplier Name</th>
+                    <th>Total POs</th>
+                    <th>Total Purchase Value (THB)</th>
+                    <th>Total Savings Achieved (THB)</th>
+                    <th>Avg % Discount</th>
+                    <th>Main Strategies</th>
+                  </tr>
+                </thead>
+                <tbody id="supplier-ranking-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 5: PIC TEAM ================= -->
+        <section class="view-section" id="view-pic-team">
+          <div class="dashboard-card" style="margin-bottom: 24px;">
+            <div class="card-title-bar">
+              <div>
+                <h3>Procurement Team Performance Matrix</h3>
+                <div class="card-subtitle">Cost reduction achievements by Person In Charge (PIC) & Strategy distribution</div>
+              </div>
+            </div>
+            <div class="pic-grid" id="pic-full-leaderboard">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-title-bar">
+              <div>
+                <h3>Strategy Cross-Matrix (กลยุทธ์ด้านจัดซื้อ รายบุคคล)</h3>
+                <div class="card-subtitle">Breakdown of negotiation methods per buyer in THB</div>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="modern-table" id="pic-strategy-table">
+                <thead>
+                  <tr>
+                    <th>กลยุทธ์ด้านจัดซื้อ (Strategy)</th>
+                    <th>Pawina</th>
+                    <th>Tanida</th>
+                    <th>Yuwanit</th>
+                    <th>Dusit</th>
+                    <th>Saniya</th>
+                    <th>Grand Total (THB)</th>
+                    <th>สัดส่วน (% Share)</th>
+                  </tr>
+                </thead>
+                <tbody id="pic-strategy-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 6: KAIZEN & CREDIT SIMULATORS ================= -->
+        <section class="view-section" id="view-simulators">
+          <!-- Kaizen Simulator -->
+          <div class="simulator-box">
+            <div class="card-title-bar">
+              <div>
+                <h3>Kaizen Cost Saving Interactive Calculator</h3>
+                <div class="card-subtitle">Labor productivity & office operational cost reduction simulator</div>
+              </div>
+              <span class="badge-tag">Company Baseline: 117 ฿/hr</span>
+            </div>
+
+            <div class="sim-grid">
+              <div class="sim-inputs">
+                <div class="form-group">
+                  <label for="sim-hourly-wage">Labor Wage (ค่าแรงเฉลี่ยทั้งบริษัท - บาท/ชม.)</label>
+                  <input type="number" class="form-control" id="sim-hourly-wage" value="117" step="1">
+                </div>
+                <div class="form-group">
+                  <label for="sim-minutes-saved">Time Saved per Task (ประหยัดเวลาได้ - นาที/งาน)</label>
+                  <input type="number" class="form-control" id="sim-minutes-saved" value="10" step="1">
+                </div>
+                <div class="form-group">
+                  <label for="sim-jobs-month">Tasks per Month (จำนวนงาน - งาน/เดือน)</label>
+                  <input type="number" class="form-control" id="sim-jobs-month" value="16" step="1">
+                </div>
+                <div class="form-group">
+                  <label for="sim-months-year">Months Count (จำนวนเดือน/ปี)</label>
+                  <input type="number" class="form-control" id="sim-months-year" value="1" step="1">
+                </div>
+              </div>
+
+              <div class="sim-result-card">
+                <div class="kpi-title">Estimated Annual Labor Savings</div>
+                <div class="sim-result-value" id="sim-kaizen-result">฿312.00</div>
+                <div class="sim-formula-text" id="sim-kaizen-formula">
+                  (10 / 60) × 16 tasks × 117 ฿/hr × 1 month
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 14px;">
+                  * Formulas reference company standard Kaizen saving worksheet
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Credit Terms Simulator -->
+          <div class="simulator-box">
+            <div class="card-title-bar">
+              <div>
+                <h3>Payment Credit Terms Extension Calculator</h3>
+                <div class="card-subtitle">Calculate interest financial gain from extending supplier credit days</div>
+              </div>
+              <span class="badge-tag">Annual Interest: 4.25%</span>
+            </div>
+
+            <div class="sim-grid">
+              <div class="sim-inputs">
+                <div class="form-group">
+                  <label for="sim-credit-po">Purchase Order Value (มูลค่าสั่งซื้อ - THB)</label>
+                  <input type="number" class="form-control" id="sim-credit-po" value="3340000" step="10000">
+                </div>
+                <div class="form-group">
+                  <label for="sim-credit-orig">Original Credit Terms (เงื่อนไขเดิม - วัน)</label>
+                  <input type="number" class="form-control" id="sim-credit-orig" value="30" step="5">
+                </div>
+                <div class="form-group">
+                  <label for="sim-credit-new">New Credit Terms (เงื่อนไขใหม่ - วัน)</label>
+                  <input type="number" class="form-control" id="sim-credit-new" value="60" step="5">
+                </div>
+                <div class="form-group">
+                  <label for="sim-credit-rate">Annual Interest Rate (% ต่อปี)</label>
+                  <input type="number" class="form-control" id="sim-credit-rate" value="4.25" step="0.25">
+                </div>
+              </div>
+
+              <div class="sim-result-card">
+                <div class="kpi-title">Calculated Accounting Financial Gain</div>
+                <div class="sim-result-value" id="sim-credit-result">฿11,829.17</div>
+                <div class="sim-formula-text" id="sim-credit-formula">
+                  3,340,000 × (30 / 360) × 4.25%
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 14px;">
+                  * Net payable after credit interest: <strong id="sim-credit-netpay">฿3,328,170.83</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 7: DATA IMPORT & EXPORT ================= -->
+        <section class="view-section" id="view-data-import">
+          <div class="dashboard-card" style="margin-bottom: 24px;">
+            <div class="card-title-bar">
+              <div>
+                <h3>Upload New Excel Spreadsheet (.xlsx)</h3>
+                <div class="card-subtitle">Dynamically update all dashboard analytics in real-time</div>
+              </div>
+            </div>
+
+            <div class="dropzone-box" id="excel-dropzone">
+              <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <h4>Drag & drop your Excel file here, or click to browse</h4>
+              <p style="color: var(--text-muted); font-size: 13px; margin-top: 6px;">Supports standard KPI Discount Supplier .xlsx files</p>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-title-bar">
+              <div>
+                <h3>Export Current Dataset</h3>
+                <div class="card-subtitle">Download filtered records or full data in various formats</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="exportFullTransactionsJSON()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download data.json
+              </button>
+              <button class="btn btn-secondary" onclick="exportFullTransactionsCSV()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download all_transactions.csv
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Transaction Details Modal -->
+  <div class="modal-overlay" id="tx-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-tx-title">Transaction Details</h3>
+        <button class="modal-close" onclick="closeTxModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-tx-body">
+        <!-- Dynamically injected -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Extracted Data and App Logic -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
