@@ -60,22 +60,23 @@ const THAI_MONTHS_SHORT = {
   'OCT': 'ต.ค.', 'NOV': 'พ.ย.', 'DEC': 'ธ.ค.'
 };
 
-const THAI_PIC_NAMES = {
-  'Pawina': 'คุณปวิณา ใจดี',
-  'Tanida': 'คุณธนิดา ธรรมสุนทร',
-  'Yuwanit': 'คุณยุวนิต โนจันทร์',
-  'Dusit': 'คุณดุสิต',
-  'Saniya': 'คุณศานิยา'
-};
-
 const PIC_KEYS = ['Pawina', 'Tanida', 'Yuwanit', 'Dusit', 'Saniya'];
 
+// ใช้ชื่อตาม Sheet ตรง 100% โดยไม่แปลชื่อหรือกลยุทธ์
+const THAI_PIC_NAMES = {
+  'Pawina': 'Pawina',
+  'Tanida': 'Tanida',
+  'Yuwanit': 'Yuwanit',
+  'Dusit': 'Dusit',
+  'Saniya': 'Saniya'
+};
+
 const THAI_STRATEGIES = {
-  'Compare + Negotiate': 'เปรียบเทียบราคาและต่อรอง',
-  'Negotiate': 'เจรจาต่อรองราคา',
-  'Avoidance': 'หลีกเลี่ยงต้นทุน',
-  'Rebate': 'ส่วนลดเงินคืน',
-  'เพิ่มเครดิต': 'ขยายระยะเวลาเครดิตเทอม'
+  'Compare + Negotiate': 'Compare + Negotiate',
+  'Negotiate': 'Negotiate',
+  'Avoidance': 'Avoidance',
+  'Rebate': 'Rebate',
+  'เพิ่มเครดิต': 'เพิ่มเครดิต'
 };
 
 // เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ
