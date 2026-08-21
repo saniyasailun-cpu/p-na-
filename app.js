@@ -129,24 +129,39 @@ function loadData() {
   }
 }
 
+function normalizeStrategy(raw) {
+  if (!raw) return 'Negotiate';
+  const str = String(raw).trim();
+  if (str.includes('Compare') || str.includes('เปรียบเทียบ')) return 'Compare + Negotiate';
+  if (str.includes('Avoidance') || str.includes('แทนการสั่งซื้อ') || str.includes('ใช้สินค้า') || str.includes('ทดแทน') || str.includes('หลีกเลี่ยง')) return 'Avoidance';
+  if (str.includes('เครดิต') || str.includes('Credit')) return 'เพิ่มเครดิต';
+  if (str.includes('Rebate') || str.includes('เงินคืน')) return 'Rebate';
+  if (str.includes('Negotiate') || str.includes('ต่อรอง') || str.includes('เจรจา') || str.includes('แนะนำ')) return 'Negotiate';
+  return 'Negotiate';
+}
+
 function setupDataset() {
   if (!State.data) return;
   
   const recent = State.data.recentTransactions || [];
   const historical = State.data.historicalTransactions || [];
   
-  State.transactions = [...recent, ...historical].map((item, idx) => ({
-    ...item,
-    globalId: item.id || `rec-${idx}`,
-    year: String(item.year || '2026'),
-    month: String(item.month || 'JAN').toUpperCase(),
-    totalPrice: Number(item.totalPrice) || 0,
-    totalSaving: Number(item.totalSaving) || 0,
-    percentDiscount: Number(item.percentDiscount) || 0,
-    qty: Number(item.qty) || 0,
-    pic: (item.pic || 'ไม่ระบุ').trim(),
-    strategy: (item.strategy || item.method || 'Negotiate').trim()
-  }));
+  State.transactions = [...recent, ...historical].map((item, idx) => {
+    const rawStrat = (item.strategy || item.method || 'Negotiate').trim();
+    return {
+      ...item,
+      globalId: item.id || `rec-${idx}`,
+      year: String(item.year || '2026'),
+      month: String(item.month || 'JAN').toUpperCase(),
+      totalPrice: Number(item.totalPrice) || 0,
+      totalSaving: Number(item.totalSaving) || 0,
+      percentDiscount: Number(item.percentDiscount) || 0,
+      qty: Number(item.qty) || 0,
+      pic: (item.pic || 'ไม่ระบุ').trim(),
+      rawStrategy: rawStrat,
+      strategy: normalizeStrategy(rawStrat)
+    };
+  });
 
   filterTransactions();
 }
