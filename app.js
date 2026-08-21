@@ -445,9 +445,10 @@ function renderMonthlyTrendChart() {
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
 
   if (State.chartMode === 'bar') {
-    const purchaseValuesMB = monthlyAgg.map(r => Number((r.pv / 1000000).toFixed(2)));
-    const costReductionMB = monthlyAgg.map(r => Number((r.cr / 1000000).toFixed(2)));
-    const targetSavingsMB = monthlyAgg.map(r => Number((r.target / 1000000).toFixed(2)));
+    // ซ่อนจุดเป้าหมายในเดือนอนาคตที่ยังไม่มีข้อมูล เพื่อไม่ให้เส้นตกไปที่ 0 ลากยาวติดพื้น
+    const purchaseValuesMB = monthlyAgg.map(r => (r.pv > 0 ? Number((r.pv / 1000000).toFixed(2)) : (r.cr !== 0 ? Number((r.pv / 1000000).toFixed(2)) : null)));
+    const costReductionMB = monthlyAgg.map(r => (r.pv > 0 || r.cr !== 0 ? Number((r.cr / 1000000).toFixed(2)) : null));
+    const targetSavingsMB = monthlyAgg.map(r => (r.pv > 0 ? Number((r.target / 1000000).toFixed(2)) : null));
 
     State.charts.monthlyTrend = new Chart(ctx, {
       type: 'bar',
@@ -466,8 +467,8 @@ function renderMonthlyTrendChart() {
           {
             label: 'มูลค่าต่อรองได้ (ล้านบาท)',
             data: costReductionMB,
-            backgroundColor: costReductionMB.map(val => val < 0 ? 'rgba(244, 63, 94, 0.75)' : 'rgba(16, 185, 129, 0.75)'),
-            borderColor: costReductionMB.map(val => val < 0 ? '#f43f5e' : '#10b981'),
+            backgroundColor: costReductionMB.map(val => (val !== null && val < 0) ? 'rgba(244, 63, 94, 0.85)' : 'rgba(16, 185, 129, 0.75)'),
+            borderColor: costReductionMB.map(val => (val !== null && val < 0) ? '#f43f5e' : '#10b981'),
             borderWidth: 1.5,
             borderRadius: 4,
             yAxisID: 'y1'
@@ -479,8 +480,9 @@ function renderMonthlyTrendChart() {
             borderColor: '#f59e0b',
             borderWidth: 2,
             borderDash: [4, 4],
-            pointRadius: 2.5,
+            pointRadius: 3.5,
             pointBackgroundColor: '#f59e0b',
+            spanGaps: false,
             yAxisID: 'y1'
           }
         ]
@@ -494,9 +496,9 @@ function renderMonthlyTrendChart() {
           tooltip: {
             callbacks: {
               label: (c) => {
+                if (c.raw === null || c.raw === undefined) return `${c.dataset.label}: ยังไม่มีข้อมูล (Pending)`;
                 const val = Number(c.raw);
                 if (val < 0) return `${c.dataset.label}: ปรับปรุงรายการ -฿${Math.abs(val)} ล้านบาท`;
-                if (val === 0) return `${c.dataset.label}: ฿0.00 (ยังไม่มีข้อมูล)`;
                 return `${c.dataset.label}: ฿${val} ล้านบาท`;
               }
             }
@@ -519,12 +521,10 @@ function renderMonthlyTrendChart() {
           y1: {
             type: 'linear',
             position: 'right',
+            beginAtZero: true,
             title: { display: true, text: 'ต่อรองได้ (ล้านบาท)', color: textColor, font: { family: 'Prompt', size: 11 } },
             ticks: { color: textColor },
-            grid: {
-              color: (context) => (context.tick && context.tick.value === 0) ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
-              lineWidth: (context) => (context.tick && context.tick.value === 0) ? 1.5 : 1
-            }
+            grid: { display: false }
           }
         }
       }
