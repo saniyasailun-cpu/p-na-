@@ -1,17 +1,18 @@
 /**
  * ==========================================================================
- * KPI DISCOUNT SUPPLIER & PROCUREMENT DASHBOARD - THAI LOCALIZED ENGINE
+ * ระบบแดชบอร์ดติดตาม KPI การลดต้นทุนจัดซื้อและส่วนลดซัพพลายเออร์
+ * Procurement KPI & Supplier Discount Management Engine
  * ==========================================================================
  */
 
-// Application Global State
+// สถานะการทำงานของระบบ (Application Global State)
 const State = {
   data: null,
   activeYear: '2026',
   activeView: 'dashboard',
   theme: localStorage.getItem('app-theme') || 'dark',
   
-  // Transaction Table State
+  // สถานะตารางรายการสั่งซื้อ
   transactions: [],
   filteredTransactions: [],
   tablePage: 1,
@@ -25,7 +26,7 @@ const State = {
     strategy: 'ALL'
   },
   
-  // Chart.js Instances
+  // ชาร์ต Chart.js
   charts: {
     monthlyTrend: null,
     strategyDonut: null,
@@ -34,22 +35,38 @@ const State = {
   }
 };
 
-// Thai Month Mapping
+// แปลงชื่อเดือนเป็นภาษาไทย
 const THAI_MONTHS = {
-  'JAN': 'ม.ค. (JAN)',
-  'FEB': 'ก.พ. (FEB)',
-  'MAR': 'มี.ค. (MAR)',
-  'APR': 'เม.ย. (APR)',
-  'MAY': 'พ.ค. (MAY)',
-  'JUN': 'มิ.ย. (JUN)',
-  'JUL': 'ก.ค. (JUL)',
-  'AUG': 'ส.ค. (AUG)',
-  'SEP': 'ก.ย. (SEP)',
-  'OCT': 'ต.ค. (OCT)',
-  'NOV': 'พ.ย. (NOV)',
-  'DEC': 'ธ.ค. (DEC)'
+  'JAN': 'มกราคม',
+  'FEB': 'กุมภาพันธ์',
+  'MAR': 'มีนาคม',
+  'APR': 'เมษายน',
+  'MAY': 'พฤษภาคม',
+  'JUN': 'มิถุนายน',
+  'JUL': 'กรกฎาคม',
+  'AUG': 'สิงหาคม',
+  'SEP': 'กันยายน',
+  'OCT': 'ตุลาคม',
+  'NOV': 'พฤศจิกายน',
+  'DEC': 'ธันวาคม'
 };
 
+const THAI_MONTHS_SHORT = {
+  'JAN': 'ม.ค.',
+  'FEB': 'ก.พ.',
+  'MAR': 'มี.ค.',
+  'APR': 'เม.ย.',
+  'MAY': 'พ.ค.',
+  'JUN': 'มิ.ย.',
+  'JUL': 'ก.ค.',
+  'AUG': 'ส.ค.',
+  'SEP': 'ก.ย.',
+  'OCT': 'ต.ค.',
+  'NOV': 'พ.ย.',
+  'DEC': 'ธ.ค.'
+};
+
+// แปลงชื่อผู้รับผิดชอบเป็นชื่อภาษาไทย
 const THAI_PIC_NAMES = {
   'Pawina': 'คุณปวิณา ใจดี',
   'Tanida': 'คุณธนิดา ธรรมสุนทร',
@@ -58,7 +75,16 @@ const THAI_PIC_NAMES = {
   'Saniya': 'คุณศานิยา'
 };
 
-// Initializer
+// แปลงชื่อกลยุทธ์เป็นภาษาไทย
+const THAI_STRATEGIES = {
+  'Compare + Negotiate': 'เปรียบเทียบราคาและต่อรอง',
+  'Negotiate': 'เจรจาต่อรองราคา',
+  'Avoidance': 'หลีกเลี่ยงต้นทุน',
+  'Rebate': 'ส่วนลดเงินคืน',
+  'เพิ่มเครดิต': 'ขยายระยะเวลาเครดิตเทอม'
+};
+
+// เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   loadData();
@@ -69,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDropzone();
 });
 
-// Theme Management
+// จัดการธีม (โหมดมืด / โหมดสว่าง)
 function initTheme() {
   document.documentElement.setAttribute('data-theme', State.theme);
   updateThemeIcons();
@@ -100,21 +126,20 @@ function updateThemeIcons() {
   }
 }
 
-// Data Ingestion & Setup
+// โหลดชุดข้อมูลหลัก
 function loadData() {
   if (window.KPI_DATA) {
     State.data = window.KPI_DATA;
     setupDataset();
     renderAllViews();
   } else {
-    console.error("KPI_DATA not found on window object.");
+    console.error("ไม่พบตัวแปร KPI_DATA ในระบบ");
   }
 }
 
 function setupDataset() {
   if (!State.data) return;
   
-  // Combine transactions from recent and historical
   const recent = State.data.recentTransactions || [];
   const historical = State.data.historicalTransactions || [];
   
@@ -135,7 +160,7 @@ function setupDataset() {
   filterTransactions();
 }
 
-// Navigation & Tab Switching
+// ระบบสลับเมนูและหน้าจอ
 function initNavigation() {
   const navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(item => {
@@ -158,7 +183,6 @@ function initNavigation() {
 function switchView(viewName) {
   State.activeView = viewName;
   
-  // Update Nav
   document.querySelectorAll('.nav-item').forEach(el => {
     if (el.getAttribute('data-view') === viewName) {
       el.classList.add('active');
@@ -167,7 +191,6 @@ function switchView(viewName) {
     }
   });
 
-  // Update Sections
   document.querySelectorAll('.view-section').forEach(sec => {
     if (sec.id === `view-${viewName}`) {
       sec.classList.add('active');
@@ -176,22 +199,21 @@ function switchView(viewName) {
     }
   });
 
-  // Update Topbar Title in Thai
+  // อัปเดตหัวข้อแถบด้านบนเป็นภาษาไทย
   const titles = {
-    'dashboard': { title: 'ภาพรวมผู้บริหาร (Executive Overview)', desc: 'สรุปผลการต่อรองลดต้นทุนจัดซื้อและติดตามผลการดำเนินงานตามเป้าหมาย' },
+    'dashboard': { title: 'ภาพรวมผู้บริหาร', desc: 'สรุปผลการต่อรองลดต้นทุนจัดซื้อและติดตามผลการดำเนินงานตามเป้าหมาย' },
     'kpi-tracking': { title: 'สรุปผล KPI รายเดือน & รายปี', desc: 'เปรียบเทียบผลการประหยัดต้นทุนเทียบเป้าหมาย 3.0% ประจำปี' },
-    'transactions': { title: 'รายการสั่งซื้อ & การต่อรอง (PO Transactions)', desc: 'ค้นหาและตรวจสอบรายการสั่งซื้อกว่า 5,800+ รายการ' },
-    'suppliers': { title: 'การวิเคราะห์ซัพพลายเออร์ (Supplier Intelligence)', desc: 'สรุปยอดสั่งซื้อและมูลค่าส่วนลดที่ได้รับจากคู่ค้าแต่ละราย' },
-    'pic-team': { title: 'อันดับผลงานทีมจัดซื้อ (PIC Leaderboard)', desc: 'สถิติและกลยุทธ์การต่อรองของเจ้าหน้าที่จัดซื้อแต่ละท่าน' },
+    'transactions': { title: 'รายการสั่งซื้อ & ส่วนลด (PO Data)', desc: 'ค้นหาและตรวจสอบรายการสั่งซื้อกว่า 5,800+ รายการ' },
+    'suppliers': { title: 'การวิเคราะห์ข้อมูลคู่ค้า (ซัพพลายเออร์)', desc: 'สรุปยอดสั่งซื้อและมูลค่าส่วนลดที่ได้รับจากคู่ค้าแต่ละราย' },
+    'pic-team': { title: 'สรุปผลงานทีมจัดซื้อรายบุคคล', desc: 'สถิติและกลยุทธ์การต่อรองของเจ้าหน้าที่จัดซื้อแต่ละท่าน' },
     'simulators': { title: 'โปรแกรมคำนวณ Kaizen & ขยายเครดิตเทอม', desc: 'เครื่องมือจำลองผลประหยัดเวลาและผลประโยชน์ทางการเงิน' },
-    'data-import': { title: 'นำเข้า / ส่งออกข้อมูล (Data Management)', desc: 'อัปโหลดไฟล์ Excel (.xlsx) ชุดใหม่ หรือดาวน์โหลดข้อมูล' }
+    'data-import': { title: 'จัดการไฟล์ข้อมูล Excel', desc: 'อัปโหลดไฟล์ Excel (.xlsx) ชุดใหม่ หรือดาวน์โหลดข้อมูล' }
   };
 
   const current = titles[viewName] || titles['dashboard'];
   document.getElementById('current-view-title').textContent = current.title;
   document.getElementById('current-view-desc').textContent = current.desc;
 
-  // Re-trigger layout for active charts
   setTimeout(() => {
     if (viewName === 'dashboard') {
       State.charts.monthlyTrend?.resize();
@@ -202,11 +224,10 @@ function switchView(viewName) {
     }
   }, 100);
 
-  // Close mobile sidebar if open
   document.getElementById('sidebar')?.classList.remove('open');
 }
 
-// Year Filters
+// ตัวกรองเลือกปี
 function initYearFilters() {
   const buttons = document.querySelectorAll('#year-filter-group .quick-btn');
   buttons.forEach(btn => {
@@ -219,7 +240,7 @@ function initYearFilters() {
   });
 }
 
-// Render All Views
+// เรนเดอร์ข้อมูลทั้งหมด
 function renderAllViews() {
   renderExecutiveDashboard();
   renderMonthlyKPITracking();
@@ -229,7 +250,7 @@ function renderAllViews() {
   renderTransactionTable();
 }
 
-// Formatters
+// รูปแบบตัวเลขและสกุลเงิน
 function formatCurrency(num, decimals = 2) {
   if (isNaN(num) || num === null) return '฿0.00';
   return '฿' + Number(num).toLocaleString('th-TH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -246,7 +267,7 @@ function formatPercent(num, decimals = 2) {
 }
 
 // -------------------------------------------------------------
-// VIEW 1: EXECUTIVE DASHBOARD
+// หน้าที่ 1: ภาพรวมผู้บริหาร
 // -------------------------------------------------------------
 function renderExecutiveDashboard() {
   if (!State.data) return;
@@ -277,10 +298,10 @@ function renderExecutiveDashboard() {
   const targetRate = 0.03; // 3%
   const isMet = savingRate >= targetRate;
 
-  // Update Hero Cards
+  // อัปเดตตัวเลขการ์ดสรุปยอด
   document.getElementById('kpi-total-savings').textContent = formatCurrency(totalSavings);
   document.getElementById('kpi-savings-mb').textContent = `${(totalSavings / 1000000).toFixed(2)} ล้านบาท`;
-  document.getElementById('kpi-savings-rate').textContent = `${(savingRate * 100).toFixed(2)}% ส่วนลดรวม`;
+  document.getElementById('kpi-savings-rate').textContent = `+${(savingRate * 100).toFixed(2)}% ประหยัดได้`;
 
   document.getElementById('kpi-total-purchase').textContent = formatCurrency(totalPurchase);
   document.getElementById('kpi-purchase-mb').textContent = `${(totalPurchase / 1000000).toFixed(2)} ล้านบาท`;
@@ -294,21 +315,21 @@ function renderExecutiveDashboard() {
   if (isMet) {
     targetBadgeEl.className = 'kpi-pill success';
     targetBadgeEl.textContent = 'ได้ตามเป้าหมาย (Passed)';
-    targetDiffEl.textContent = `+${((savingRate - targetRate) * 100).toFixed(2)}% สูงกว่าเป้า`;
+    targetDiffEl.textContent = `+${((savingRate - targetRate) * 100).toFixed(2)}% สูงกว่าเป้าหมาย`;
   } else {
     targetBadgeEl.className = 'kpi-pill danger';
     targetBadgeEl.textContent = 'ไม่ได้ตามเป้าหมาย (Below Target)';
-    targetDiffEl.textContent = `${((savingRate - targetRate) * 100).toFixed(2)}% ต่ำกว่าเป้า`;
+    targetDiffEl.textContent = `${((savingRate - targetRate) * 100).toFixed(2)}% ต่ำกว่าเป้าหมาย`;
   }
 
-  // Credit Terms Savings
+  // ผลประหยัดจากการเพิ่มเครดิตเทอม
   let creditTotal = 0;
   if (State.data.monthlySummary) {
     State.data.monthlySummary.forEach(m => creditTotal += (m.creditSaving || 0));
   }
   document.getElementById('kpi-credit-savings').textContent = formatCurrency(creditTotal > 0 ? creditTotal : 85669.64);
 
-  // Render Charts
+  // วาดกราฟ
   renderMonthlyTrendChart();
   renderStrategyDonutChart();
   renderPICPerformanceChart();
@@ -388,7 +409,7 @@ function renderMonthlyTrendChart() {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
-          labels: { color: textColor, font: { family: 'Prompt, Plus Jakarta Sans', size: 12 } }
+          labels: { color: textColor, font: { family: 'Prompt', size: 12 } }
         },
         tooltip: {
           callbacks: {
@@ -425,7 +446,7 @@ function renderStrategyDonutChart() {
   if (!ctx || !State.data) return;
 
   const matrix = State.data.strategyMatrix || [];
-  const labels = matrix.map(s => s.strategy);
+  const labels = matrix.map(s => THAI_STRATEGIES[s.strategy] || s.strategy);
   const dataValues = matrix.map(s => s.Total);
 
   const colors = [
@@ -466,21 +487,21 @@ function renderStrategyDonutChart() {
     }
   });
 
-  // Render List Breakdown in Thai
   const total = dataValues.reduce((a, b) => a + b, 0) || 1;
   const listEl = document.getElementById('strategy-breakdown-list');
   if (listEl) {
     listEl.innerHTML = matrix.map((item, idx) => {
       const pct = ((item.Total / total) * 100).toFixed(1);
+      const nameThai = THAI_STRATEGIES[item.strategy] || item.strategy;
       return `
         <div class="strategy-row">
           <div class="strategy-meta">
             <span class="strategy-dot" style="background: ${colors[idx % colors.length]};"></span>
-            <span class="strategy-name">${item.strategy}</span>
+            <span class="strategy-name">${nameThai}</span>
           </div>
           <div class="strategy-figures">
             <div class="strategy-amt">${formatCurrency(item.Total, 0)}</div>
-            <div class="strategy-pct">${pct}% ของทั้งหมด</div>
+            <div class="strategy-pct">${pct}% ของยอดลดทั้งหมด</div>
           </div>
         </div>
       `;
@@ -579,12 +600,12 @@ function renderTopSuppliersList() {
           <span class="pic-rank" style="min-width: 24px; text-align: center;">#${idx + 1}</span>
           <div>
             <div class="strategy-name" style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${sup}">${sup}</div>
-            <div class="strategy-pct">${data.count} คำสั่งซื้อ | ลดเฉลี่ย ${formatPercent(avgDisc, 1)}</div>
+            <div class="strategy-pct">${data.count} รายการ | ลดเฉลี่ย ${formatPercent(avgDisc, 1)}</div>
           </div>
         </div>
         <div class="strategy-figures">
           <div class="strategy-amt" style="color: var(--accent-emerald);">${formatCurrency(data.savings, 0)}</div>
-          <div class="strategy-pct">ยอดซื้อ: ${formatCurrency(data.purchase, 0)}</div>
+          <div class="strategy-pct">ยอดสั่งซื้อ: ${formatCurrency(data.purchase, 0)}</div>
         </div>
       </div>
     `;
@@ -592,7 +613,7 @@ function renderTopSuppliersList() {
 }
 
 // -------------------------------------------------------------
-// VIEW 2: MONTHLY & YEARLY KPI TRACKING
+// หน้าที่ 2: สรุปผล KPI รายเดือน & รายปี
 // -------------------------------------------------------------
 function renderMonthlyKPITracking() {
   const tbody = document.getElementById('monthly-kpi-tbody');
@@ -635,7 +656,6 @@ function renderMonthlyKPITracking() {
     `;
   }).join('');
 
-  // Total Summary Row
   const totalActualPct = totalPV > 0 ? (totalCR / totalPV) : 0;
   const isTotalPassed = totalActualPct >= 0.03;
   tbody.innerHTML += `
@@ -657,7 +677,6 @@ function renderMonthlyKPITracking() {
     </tr>
   `;
 
-  // Credit Extension Table
   if (creditTbody) {
     creditTbody.innerHTML = monthly.filter(m => m.creditPOVal > 0).map(m => `
       <tr>
@@ -728,7 +747,7 @@ function renderMultiYearChart() {
 }
 
 // -------------------------------------------------------------
-// VIEW 3: PO & TRANSACTION EXPLORER
+// หน้าที่ 3: รายการสั่งซื้อ & การต่อรอง (PO Transactions)
 // -------------------------------------------------------------
 function initTableEvents() {
   const searchInput = document.getElementById('tx-search-input');
@@ -796,7 +815,6 @@ function initTableEvents() {
     }
   });
 
-  // Table Column Sort Headers
   document.querySelectorAll('#transaction-data-table th.sortable').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.getAttribute('data-sort');
@@ -815,27 +833,22 @@ function initTableEvents() {
 function filterTransactions() {
   let list = State.transactions;
 
-  // Year filter
   if (State.activeYear !== 'ALL') {
     list = list.filter(t => t.year === State.activeYear);
   }
 
-  // Month filter
   if (State.filters.month !== 'ALL') {
     list = list.filter(t => t.month === State.filters.month);
   }
 
-  // PIC filter
   if (State.filters.pic !== 'ALL') {
     list = list.filter(t => t.pic.toLowerCase().includes(State.filters.pic.toLowerCase()));
   }
 
-  // Strategy filter
   if (State.filters.strategy !== 'ALL') {
     list = list.filter(t => t.strategy.toLowerCase().includes(State.filters.strategy.toLowerCase()));
   }
 
-  // Full-text search
   if (State.filters.search) {
     const q = State.filters.search;
     list = list.filter(t => 
@@ -886,11 +899,11 @@ function renderTransactionTable() {
   const pageData = State.filteredTransactions.slice(startIdx, endIdx);
 
   if (pageData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 40px; color: var(--text-muted);">ไม่พบรายการข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 40px; color: var(--text-muted);">ไม่พบรายการข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>`;
   } else {
     tbody.innerHTML = pageData.map(item => `
       <tr onclick="openTxModal('${item.globalId}')">
-        <td><span class="badge-tag">${item.month}</span></td>
+        <td><span class="badge-tag">${THAI_MONTHS_SHORT[item.month] || item.month}</span></td>
         <td><strong>${item.poNo || '-'}</strong></td>
         <td style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.supplier}">${item.supplier || '-'}</td>
         <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.description}">${item.description || '-'}</td>
@@ -899,16 +912,16 @@ function renderTransactionTable() {
         <td>${formatCurrency(item.totalPrice)}</td>
         <td class="cell-highlight">${formatCurrency(item.totalSaving)}</td>
         <td><strong>${(item.percentDiscount * 100).toFixed(1)}%</strong></td>
-        <td><span class="badge-tag">${item.strategy || '-'}</span></td>
+        <td><span class="badge-tag">${THAI_STRATEGIES[item.strategy] || item.strategy || '-'}</span></td>
         <td>${THAI_PIC_NAMES[item.pic] || item.pic || '-'}</td>
       </tr>
     `).join('');
   }
 
-  // Pagination UI
+  // แถบเลขหน้าแบ่งกลุ่ม
   if (infoEl) {
     infoEl.textContent = total > 0 
-      ? `แสดง ${startIdx + 1} ถึง ${endIdx} จากทั้งหมด ${formatNumber(total)} รายการ`
+      ? `แสดงรายการที่ ${startIdx + 1} ถึง ${endIdx} จากทั้งหมด ${formatNumber(total)} รายการ`
       : 'แสดง 0 ถึง 0 จากทั้งหมด 0 รายการ';
   }
 
@@ -939,7 +952,7 @@ window.goToTablePage = function(page) {
 };
 
 // -------------------------------------------------------------
-// MODAL DETAILS POPUP
+// หน้าต่างป๊อปอัปดูรายละเอียดรายการสั่งซื้อ
 // -------------------------------------------------------------
 window.openTxModal = function(globalId) {
   const item = State.transactions.find(t => t.globalId === globalId);
@@ -954,11 +967,11 @@ window.openTxModal = function(globalId) {
   if (modalBody) {
     modalBody.innerHTML = `
       <div class="modal-detail-row">
-        <span class="label">ชื่อซัพพลายเออร์</span>
+        <span class="label">ชื่อซัพพลายเออร์ / คู่ค้า</span>
         <span class="val">${item.supplier}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">รายละเอียดสินค้า/บริการ</span>
+        <span class="label">รายละเอียดสินค้าหรือบริการ</span>
         <span class="val">${item.description}</span>
       </div>
       <div class="modal-detail-row">
@@ -970,11 +983,11 @@ window.openTxModal = function(globalId) {
         <span class="val">${formatNumber(item.qty)} ${item.unit}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">ราคาต่ำสุดต่อหน่วย</span>
+        <span class="label">ราคาต่อหน่วยต่ำสุดเดิม</span>
         <span class="val">${formatCurrency(item.minUnitPrice)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">ราคาต่อรองได้ต่อหน่วย</span>
+        <span class="label">ราคาต่อหน่วยที่ต่อรองได้</span>
         <span class="val">${formatCurrency(item.negotiatedUnitPrice)}</span>
       </div>
       <div class="modal-detail-row">
@@ -982,11 +995,11 @@ window.openTxModal = function(globalId) {
         <span class="val">${formatCurrency(item.unitDifference)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">มูลค่าสั่งซื้อรวม (PO Total)</span>
+        <span class="label">มูลค่าสั่งซื้อรวม (บาท)</span>
         <span class="val">${formatCurrency(item.totalPrice)}</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">รวมมูลค่าที่ต่อรองลดลงได้</span>
+        <span class="label">รวมมูลค่าที่ต่อรองลดลงได้ (บาท)</span>
         <span class="val" style="color: var(--accent-emerald); font-size: 16px; font-weight: 700;">${formatCurrency(item.totalSaving)}</span>
       </div>
       <div class="modal-detail-row">
@@ -994,11 +1007,11 @@ window.openTxModal = function(globalId) {
         <span class="val" style="color: var(--accent-primary); font-weight: 700;">${(item.percentDiscount * 100).toFixed(2)}%</span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">กลยุทธ์ด้านจัดซื้อ (Strategy)</span>
-        <span class="val"><span class="badge-tag">${item.strategy}</span></span>
+        <span class="label">กลยุทธ์การต่อรองราคา</span>
+        <span class="val"><span class="badge-tag">${THAI_STRATEGIES[item.strategy] || item.strategy}</span></span>
       </div>
       <div class="modal-detail-row">
-        <span class="label">ผู้รับผิดชอบ (Person in Charge)</span>
+        <span class="label">ผู้รับผิดชอบการจัดซื้อ</span>
         <span class="val">${THAI_PIC_NAMES[item.pic] || item.pic}</span>
       </div>
     `;
@@ -1016,7 +1029,7 @@ document.getElementById('tx-modal')?.addEventListener('click', (e) => {
 });
 
 // -------------------------------------------------------------
-// VIEW 4: SUPPLIERS ANALYTICS
+// หน้าที่ 4: การวิเคราะห์ข้อมูลคู่ค้า (ซัพพลายเออร์)
 // -------------------------------------------------------------
 function renderSuppliersView() {
   const tbody = document.getElementById('supplier-ranking-tbody');
@@ -1051,7 +1064,7 @@ function renderSuppliersView() {
     const topStrats = Object.keys(sup.strategies)
       .sort((a, b) => sup.strategies[b] - sup.strategies[a])
       .slice(0, 2)
-      .map(s => `<span class="badge-tag">${s}</span>`)
+      .map(s => `<span class="badge-tag">${THAI_STRATEGIES[s] || s}</span>`)
       .join(' ');
 
     return `
@@ -1071,7 +1084,7 @@ function renderSuppliersView() {
 }
 
 // -------------------------------------------------------------
-// VIEW 5: PIC TEAM LEADERBOARD
+// หน้าที่ 5: สรุปผลงานทีมจัดซื้อรายบุคคล (PIC Leaderboard)
 // -------------------------------------------------------------
 function renderPICLeaderboard() {
   const container = document.getElementById('pic-full-leaderboard');
@@ -1116,16 +1129,17 @@ function renderPICLeaderboard() {
     `;
   }).join('');
 
-  // Render PIC Strategy Cross Matrix
+  // ตารางกลยุทธ์จัดซื้อจำแนกรายบุคคล
   if (tableBody && State.data.strategyMatrix) {
     const matrix = State.data.strategyMatrix;
     const totalAll = matrix.reduce((acc, row) => acc + (row.Total || 0), 0) || 1;
 
     tableBody.innerHTML = matrix.map(row => {
       const share = ((row.Total / totalAll) * 100).toFixed(2);
+      const stratThai = THAI_STRATEGIES[row.strategy] || row.strategy;
       return `
         <tr>
-          <td><strong>${row.strategy}</strong></td>
+          <td><strong>${stratThai}</strong></td>
           <td>${formatCurrency(row.Pawina, 0)}</td>
           <td>${formatCurrency(row.Tanida, 0)}</td>
           <td>${formatCurrency(row.Yuwanit, 0)}</td>
@@ -1140,7 +1154,7 @@ function renderPICLeaderboard() {
 }
 
 // -------------------------------------------------------------
-// VIEW 6: KAIZEN & CREDIT SIMULATORS
+// หน้าที่ 6: โปรแกรมคำนวณ Kaizen & ขยายเครดิตเทอม
 // -------------------------------------------------------------
 function initSimulators() {
   const wageInput = document.getElementById('sim-hourly-wage');
@@ -1162,7 +1176,7 @@ function initSimulators() {
 
   [wageInput, minInput, jobsInput, monthsInput].forEach(el => el?.addEventListener('input', calcKaizen));
 
-  // Credit Terms Calculator
+  // คำนวณขยายเครดิตเทอม
   const poInput = document.getElementById('sim-credit-po');
   const origInput = document.getElementById('sim-credit-orig');
   const newInput = document.getElementById('sim-credit-new');
@@ -1188,7 +1202,7 @@ function initSimulators() {
 }
 
 // -------------------------------------------------------------
-// VIEW 7: DROPZONE & EXPORT ENGINE
+// หน้าที่ 7: อัปโหลดและส่งออกข้อมูล
 // -------------------------------------------------------------
 function initDropzone() {
   const dropzone = document.getElementById('excel-dropzone');
@@ -1245,11 +1259,11 @@ function handleUploadedExcel(file) {
   reader.readAsArrayBuffer(file);
 }
 
-// Export Helpers
+// ส่งออกไฟล์ CSV และ JSON
 function exportFilteredTransactions() {
   const headers = ["เดือน", "เลขที่ PO", "ชื่อซัพพลายเออร์", "รายละเอียดสินค้า/บริการ", "จำนวน", "หน่วย", "ราคารวม (บาท)", "รวมที่ต่อรองได้ (บาท)", "% ส่วนลด", "กลยุทธ์", "ผู้รับผิดชอบ"];
   const rows = State.filteredTransactions.map(t => [
-    t.month,
+    THAI_MONTHS[t.month] || t.month,
     `"${t.poNo}"`,
     `"${(t.supplier || '').replace(/"/g, '""')}"`,
     `"${(t.description || '').replace(/"/g, '""')}"`,
@@ -1258,17 +1272,17 @@ function exportFilteredTransactions() {
     t.totalPrice,
     t.totalSaving,
     (t.percentDiscount * 100).toFixed(2) + '%',
-    `"${t.strategy}"`,
+    `"${THAI_STRATEGIES[t.strategy] || t.strategy}"`,
     `"${THAI_PIC_NAMES[t.pic] || t.pic}"`
   ]);
 
-  downloadCSV("transactions_export.csv", headers, rows);
+  downloadCSV("รายงานรายการส่วนลดจัดซื้อ.csv", headers, rows);
 }
 
 window.exportMonthlyKPIToCSV = function() {
   const headers = ["เดือน", "มูลค่าสั่งซื้อ (บาท)", "มูลค่าต่อรองได้ (บาท)", "เป้าหมาย 3% (บาท)", "% ส่วนลดจริง", "สถานะ KPI", "ผลประหยัดเพิ่มเครดิต (บาท)"];
   const rows = (State.data.monthlySummary || []).map(m => [
-    m.month,
+    THAI_MONTHS[m.month] || m.month,
     m.pv2026,
     m.cr2026,
     m.target2026,
@@ -1277,7 +1291,7 @@ window.exportMonthlyKPIToCSV = function() {
     m.creditSaving
   ]);
 
-  downloadCSV("monthly_kpi_summary.csv", headers, rows);
+  downloadCSV("สรุปผลการลดต้นทุนรายเดือน.csv", headers, rows);
 };
 
 window.exportFullTransactionsCSV = function() {

@@ -6,10 +6,10 @@
   <title>ระบบแดชบอร์ดติดตาม KPI การลดต้นทุนจัดซื้อและส่วนลดซัพพลายเออร์</title>
   <meta name="description" content="ระบบรายงานและวิเคราะห์ผลการดำเนินงานจัดซื้อ การต่อรองราคา และการประหยัดต้นทุนประจำปี">
   
-  <!-- Google Fonts: Plus Jakarta Sans & Outfit & Prompt / Noto Sans Thai -->
+  <!-- Google Fonts: Prompt & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   
   <!-- Chart.js & SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -29,16 +29,16 @@
           </svg>
         </div>
         <div class="brand-info">
-          <h1>ProcureKPI</h1>
-          <p>ระบบติดตามส่วนลดจัดซื้อ</p>
+          <h1>แดชบอร์ดจัดซื้อ</h1>
+          <p>ระบบติดตามส่วนลด & ลดต้นทุน</p>
         </div>
       </div>
 
       <div class="sidebar-nav">
-        <span class="nav-label">ภาพรวมและการวิเคราะห์</span>
+        <span class="nav-label">เมนูวิเคราะห์และรายงาน</span>
         <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          ภาพรวมผู้บริหาร (Overview)
+          ภาพรวมผู้บริหาร
         </a>
         <a class="nav-item" data-view="kpi-tracking" id="nav-kpi-tracking">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -46,27 +46,27 @@
         </a>
         <a class="nav-item" data-view="transactions" id="nav-transactions">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          รายการสั่งซื้อ & ส่วนลด (PO Data)
+          รายการสั่งซื้อ & ส่วนลด (PO)
         </a>
 
-        <span class="nav-label">ทีมจัดซื้อและซัพพลายเออร์</span>
+        <span class="nav-label">คู่ค้าและทีมงาน</span>
         <a class="nav-item" data-view="suppliers" id="nav-suppliers">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          วิเคราะห์ซัพพลายเออร์ (Suppliers)
+          ข้อมูลซัพพลายเออร์ / คู่ค้า
         </a>
         <a class="nav-item" data-view="pic-team" id="nav-pic-team">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          ผลงานรายบุคคล (PIC Team)
+          ผลงานทีมจัดซื้อรายบุคคล
         </a>
 
-        <span class="nav-label">เครื่องมือและจำลองตัวเลข</span>
+        <span class="nav-label">เครื่องมือคำนวณและจำลองผล</span>
         <a class="nav-item" data-view="simulators" id="nav-simulators">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
           คำนวณ Kaizen & ขยายเครดิต
         </a>
         <a class="nav-item" data-view="data-import" id="nav-data-import">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          นำเข้า / ส่งออกข้อมูล Excel
+          จัดการไฟล์ข้อมูล Excel
         </a>
       </div>
 
@@ -75,7 +75,7 @@
           <div class="user-avatar">จัดซื้อ</div>
           <div class="user-meta">
             <div class="user-name">แผนกจัดซื้อ</div>
-            <div class="user-role">QTC / Sailun Group</div>
+            <div class="user-role">กลุ่มบริษัท QTC / Sailun</div>
           </div>
         </div>
       </div>
@@ -98,10 +98,10 @@
         <div class="topbar-right">
           <!-- Global Year Switcher -->
           <div class="quick-filter-group" id="year-filter-group">
-            <button class="quick-btn active" data-year="2026">ปี 2568 / 2026</button>
-            <button class="quick-btn" data-year="2025">ปี 2025</button>
-            <button class="quick-btn" data-year="2024">ปี 2024</button>
-            <button class="quick-btn" data-year="2023">ปี 2023</button>
+            <button class="quick-btn active" data-year="2026">ปี 2568 (2026)</button>
+            <button class="quick-btn" data-year="2025">ปี 2567 (2025)</button>
+            <button class="quick-btn" data-year="2024">ปี 2566 (2024)</button>
+            <button class="quick-btn" data-year="2023">ปี 2565 (2023)</button>
             <button class="quick-btn" data-year="ALL">ข้อมูลทุกปี</button>
           </div>
 
@@ -122,7 +122,7 @@
           <div class="kpi-grid">
             <div class="kpi-card accent-emerald">
               <div class="kpi-header">
-                <span class="kpi-title">รวมมูลค่าที่ต่อรองลดลงได้ (Cost Reduction)</span>
+                <span class="kpi-title">รวมมูลค่าที่ต่อรองลดลงได้</span>
                 <div class="kpi-icon-badge">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                 </div>
@@ -136,7 +136,7 @@
 
             <div class="kpi-card accent-cyan">
               <div class="kpi-header">
-                <span class="kpi-title">มูลค่าการสั่งซื้อรวม (Purchase Value)</span>
+                <span class="kpi-title">มูลค่าการสั่งซื้อรวม</span>
                 <div class="kpi-icon-badge">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 </div>
@@ -150,7 +150,7 @@
 
             <div class="kpi-card accent-purple">
               <div class="kpi-header">
-                <span class="kpi-title">สถานะเป้าหมาย KPI (เป้าหมาย 3.0%)</span>
+                <span class="kpi-title">สถานะเทียบเป้าหมาย KPI (เป้าหมาย 3.0%)</span>
                 <div class="kpi-icon-badge">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                 </div>
@@ -223,7 +223,7 @@
                 <div>
                   <h3>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-                    ผลงานการต่อรองลดต้นทุน รายบุคคล (PIC)
+                    ผลงานการต่อรองลดต้นทุน รายบุคคล
                   </h3>
                   <div class="card-subtitle">มูลค่าที่ต่อรองได้ของเจ้าหน้าที่จัดซื้อแต่ละท่าน</div>
                 </div>
@@ -258,7 +258,7 @@
           <div class="dashboard-card" style="margin-bottom: 24px;">
             <div class="card-title-bar">
               <div>
-                <h3>ตารางสรุปผลการดำเนินงานจัดซื้อรายเดือน (Monthly KPI Matrix)</h3>
+                <h3>ตารางสรุปผลการดำเนินงานจัดซื้อรายเดือน</h3>
                 <div class="card-subtitle">เปรียบเทียบมูลค่าจริงเทียบเป้าหมายการลดต้นทุน 3.0% (ปี 2568 / 2026)</div>
               </div>
               <button class="btn btn-primary" onclick="exportMonthlyKPIToCSV()">
@@ -271,14 +271,14 @@
               <table class="modern-table" id="monthly-kpi-table">
                 <thead>
                   <tr>
-                    <th>เดือน (Month)</th>
+                    <th>เดือน</th>
                     <th>มูลค่าสั่งซื้อ (บาท)</th>
                     <th>มูลค่าต่อรองได้ (บาท)</th>
                     <th>เป้าหมาย 3% (บาท)</th>
                     <th>คิดเป็น % ส่วนลด</th>
                     <th>ผลต่างเทียบเป้าหมาย</th>
                     <th>สถานะ KPI</th>
-                    <th>ลดต้นทุนเพิ่มเครดิต</th>
+                    <th>ลดต้นทุนเพิ่มเครดิต (บาท)</th>
                   </tr>
                 </thead>
                 <tbody id="monthly-kpi-tbody">
@@ -305,7 +305,7 @@
             <div class="dashboard-card">
               <div class="card-title-bar">
                 <div>
-                  <h3>ผลประหยัดจากการขยายเครดิตเทอม (Credit Terms Saving)</h3>
+                  <h3>ผลประหยัดจากการขยายเครดิตเทอม</h3>
                   <div class="card-subtitle">คิดผลประโยชน์ทางการเงินที่อัตราดอกเบี้ย 4.25% ต่อปี</div>
                 </div>
               </div>
@@ -338,35 +338,35 @@
                 <input type="text" id="tx-search-input" placeholder="ค้นหาเลขที่ PO, ชื่อซัพพลายเออร์, รายการสินค้า...">
               </div>
               <select class="custom-select" id="filter-tx-month">
-                <option value="ALL">ทุกเดือน (All Months)</option>
-                <option value="JAN">มกราคม (JAN)</option>
-                <option value="FEB">กุมภาพันธ์ (FEB)</option>
-                <option value="MAR">มีนาคม (MAR)</option>
-                <option value="APR">เมษายน (APR)</option>
-                <option value="MAY">พฤษภาคม (MAY)</option>
-                <option value="JUN">มิถุนายน (JUN)</option>
-                <option value="JUL">กรกฎาคม (JUL)</option>
-                <option value="AUG">สิงหาคม (AUG)</option>
-                <option value="SEP">กันยายน (SEP)</option>
-                <option value="OCT">ตุลาคม (OCT)</option>
-                <option value="NOV">พฤศจิกายน (NOV)</option>
-                <option value="DEC">ธันวาคม (DEC)</option>
+                <option value="ALL">ทุกเดือน</option>
+                <option value="JAN">มกราคม</option>
+                <option value="FEB">กุมภาพันธ์</option>
+                <option value="MAR">มีนาคม</option>
+                <option value="APR">เมษายน</option>
+                <option value="MAY">พฤษภาคม</option>
+                <option value="JUN">มิถุนายน</option>
+                <option value="JUL">กรกฎาคม</option>
+                <option value="AUG">สิงหาคม</option>
+                <option value="SEP">กันยายน</option>
+                <option value="OCT">ตุลาคม</option>
+                <option value="NOV">พฤศจิกายน</option>
+                <option value="DEC">ธันวาคม</option>
               </select>
               <select class="custom-select" id="filter-tx-pic">
-                <option value="ALL">ผู้รับผิดชอบทั้งหมด (All PIC)</option>
-                <option value="Pawina">คุณปวิณา ใจดี (Pawina)</option>
-                <option value="Tanida">คุณธนิดา ธรรมสุนทร (Tanida)</option>
-                <option value="Yuwanit">คุณยุวนิต โนจันทร์ (Yuwanit)</option>
-                <option value="Dusit">คุณดุสิต (Dusit)</option>
-                <option value="Saniya">คุณศานิยา (Saniya)</option>
+                <option value="ALL">ผู้รับผิดชอบทั้งหมด</option>
+                <option value="Pawina">คุณปวิณา ใจดี</option>
+                <option value="Tanida">คุณธนิดา ธรรมสุนทร</option>
+                <option value="Yuwanit">คุณยุวนิต โนจันทร์</option>
+                <option value="Dusit">คุณดุสิต</option>
+                <option value="Saniya">คุณศานิยา</option>
               </select>
               <select class="custom-select" id="filter-tx-strategy">
-                <option value="ALL">กลยุทธ์ทั้งหมด (All Strategies)</option>
-                <option value="Compare + Negotiate">Compare + Negotiate (เปรียบเทียบราคา & ต่อรอง)</option>
-                <option value="Negotiate">Negotiate (เจรจาต่อรอง)</option>
-                <option value="Avoidance">Avoidance (หลีกเลี่ยงต้นทุน)</option>
-                <option value="Rebate">Rebate (ส่วนลดเงินคืน)</option>
-                <option value="เพิ่มเครดิต">เพิ่มเครดิต (Extend Credit Terms)</option>
+                <option value="ALL">กลยุทธ์ทั้งหมด</option>
+                <option value="Compare + Negotiate">เปรียบเทียบราคาและต่อรอง (Compare + Negotiate)</option>
+                <option value="Negotiate">เจรจาต่อรองราคา (Negotiate)</option>
+                <option value="Avoidance">หลีกเลี่ยงต้นทุน (Avoidance)</option>
+                <option value="Rebate">ส่วนลดเงินคืน (Rebate)</option>
+                <option value="เพิ่มเครดิต">ขยายระยะเวลาเครดิตเทอม</option>
               </select>
             </div>
             <div class="filter-actions">
@@ -386,10 +386,10 @@
                   <tr>
                     <th class="sortable" data-sort="month">เดือน</th>
                     <th class="sortable" data-sort="poNo">เลขที่ PO</th>
-                    <th class="sortable" data-sort="supplier">ชื่อซัพพลายเออร์</th>
+                    <th class="sortable" data-sort="supplier">ชื่อซัพพลายเออร์ / คู่ค้า</th>
                     <th>รายละเอียดสินค้า/บริการ</th>
                     <th class="sortable" data-sort="qty">จำนวน</th>
-                    <th>หน่วย</th>
+                    <th>หน่วยนับ</th>
                     <th class="sortable" data-sort="totalPrice">ราคารวม (บาท)</th>
                     <th class="sortable" data-sort="totalSaving">รวมที่ต่อรองได้ (บาท)</th>
                     <th class="sortable" data-sort="percentDiscount">% ส่วนลด</th>
@@ -420,7 +420,7 @@
           <div class="dashboard-card" style="margin-bottom: 24px;">
             <div class="card-title-bar">
               <div>
-                <h3>การวิเคราะห์และจัดอันดับซัพพลายเออร์ (Supplier Intelligence)</h3>
+                <h3>การวิเคราะห์ข้อมูลคู่ค้า (ซัพพลายเออร์)</h3>
                 <div class="card-subtitle">สรุปมูลค่าสั่งซื้อ ยอดส่วนลดที่ต่อรองได้ และกลยุทธ์หลักที่ใช้กับคู่ค้าแต่ละราย</div>
               </div>
               <div class="search-box" style="max-width: 320px;">
@@ -433,7 +433,7 @@
                 <thead>
                   <tr>
                     <th>อันดับ</th>
-                    <th>ชื่อซัพพลายเออร์</th>
+                    <th>ชื่อซัพพลายเออร์ / คู่ค้า</th>
                     <th>จำนวน PO</th>
                     <th>มูลค่าสั่งซื้อรวม (บาท)</th>
                     <th>มูลค่าที่ต่อรองได้รวม (บาท)</th>
@@ -454,7 +454,7 @@
           <div class="dashboard-card" style="margin-bottom: 24px;">
             <div class="card-title-bar">
               <div>
-                <h3>ผลงานการต่อรองของทีมจัดซื้อ (PIC Team Performance)</h3>
+                <h3>สรุปผลงานทีมจัดซื้อรายบุคคล</h3>
                 <div class="card-subtitle">สรุปยอดลดต้นทุน สัดส่วนผลงาน และจำนวนรายการสั่งซื้อของเจ้าหน้าที่แต่ละท่าน</div>
               </div>
             </div>
@@ -466,7 +466,7 @@
           <div class="dashboard-card">
             <div class="card-title-bar">
               <div>
-                <h3>ตารางกลยุทธ์ด้านจัดซื้อรายบุคคล (Strategy Cross-Matrix)</h3>
+                <h3>ตารางกลยุทธ์ด้านจัดซื้อรายบุคคล</h3>
                 <div class="card-subtitle">สรุปมูลค่าการต่อรองจำแนกตามวิธีและเจ้าหน้าที่จัดซื้อ (หน่วย: บาท)</div>
               </div>
             </div>
@@ -474,12 +474,12 @@
               <table class="modern-table" id="pic-strategy-table">
                 <thead>
                   <tr>
-                    <th>กลยุทธ์ด้านจัดซื้อ (Strategy)</th>
-                    <th>คุณปวิณา (Pawina)</th>
-                    <th>คุณธนิดา (Tanida)</th>
-                    <th>คุณยุวนิต (Yuwanit)</th>
-                    <th>คุณดุสิต (Dusit)</th>
-                    <th>คุณศานิยา (Saniya)</th>
+                    <th>กลยุทธ์ด้านจัดซื้อ</th>
+                    <th>คุณปวิณา ใจดี</th>
+                    <th>คุณธนิดา ธรรมสุนทร</th>
+                    <th>คุณยุวนิต โนจันทร์</th>
+                    <th>คุณดุสิต</th>
+                    <th>คุณศานิยา</th>
                     <th>รวมมูลค่าทั้งหมด (บาท)</th>
                     <th>สัดส่วน (% Share)</th>
                   </tr>
@@ -498,7 +498,7 @@
           <div class="simulator-box">
             <div class="card-title-bar">
               <div>
-                <h3>โปรแกรมคำนวณผลประหยัด Kaizen Cost Saving</h3>
+                <h3>โปรแกรมคำนวณผลประหยัด Kaizen</h3>
                 <div class="card-subtitle">เครื่องมือจำลองผลประหยัดเวลาการทำงานและต้นทุนการดำเนินงาน</div>
               </div>
               <span class="badge-tag">อัตราค่าแรงเฉลี่ยบริษัท: 117 บาท/ชม.</span>
@@ -541,7 +541,7 @@
           <div class="simulator-box">
             <div class="card-title-bar">
               <div>
-                <h3>โปรแกรมคำนวณผลประหยัดจากการขยายเครดิตเทอม (Extend Credit Terms)</h3>
+                <h3>โปรแกรมคำนวณผลประหยัดจากการขยายเครดิตเทอม</h3>
                 <div class="card-subtitle">คำนวณผลประโยชน์ทางการเงินและลดต้นทุนทางบัญชีจากการยืดระยะเวลาชำระเงิน</div>
               </div>
               <span class="badge-tag">อัตราดอกเบี้ย: 4.25% ต่อปี</span>
@@ -627,7 +627,7 @@
   <div class="modal-overlay" id="tx-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="modal-tx-title">รายละเอียดรายการสั่งซื้อ (PO Details)</h3>
+        <h3 id="modal-tx-title">รายละเอียดรายการสั่งซื้อ</h3>
         <button class="modal-close" onclick="closeTxModal()">&times;</button>
       </div>
       <div class="modal-body" id="modal-tx-body">
