@@ -1,7 +1,7 @@
 /**
  * ==========================================================================
  * ระบบแดชบอร์ดติดตาม KPI การลดต้นทุนจัดซื้อและส่วนลดซัพพลายเออร์
- * Procurement KPI & Supplier Discount Management Engine (Clean UX/UI)
+ * Procurement KPI & Supplier Discount Management Engine (Dynamic & Responsive)
  * ==========================================================================
  */
 
@@ -37,6 +37,8 @@ const State = {
 };
 
 // ข้อมูลเดือนและไตรมาส
+const MONTH_ORDER = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
 const QUARTER_MONTHS = {
   'Q1': ['JAN', 'FEB', 'MAR'],
   'Q2': ['APR', 'MAY', 'JUN'],
@@ -66,6 +68,8 @@ const THAI_PIC_NAMES = {
   'Saniya': 'คุณศานิยา'
 };
 
+const PIC_KEYS = ['Pawina', 'Tanida', 'Yuwanit', 'Dusit', 'Saniya'];
+
 const THAI_STRATEGIES = {
   'Compare + Negotiate': 'เปรียบเทียบราคาและต่อรอง',
   'Negotiate': 'เจรจาต่อรองราคา',
@@ -74,7 +78,7 @@ const THAI_STRATEGIES = {
   'เพิ่มเครดิต': 'ขยายระยะเวลาเครดิตเทอม'
 };
 
-// เริ่มต้นการทำงาน
+// เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   loadData();
@@ -195,12 +199,12 @@ function switchView(viewName) {
     } else if (viewName === 'kpi-tracking') {
       State.charts.multiYear?.resize();
     }
-  }, 50);
+  }, 60);
 
   document.getElementById('sidebar')?.classList.remove('open');
 }
 
-// ตัวเลือกปีและไตรมาส
+// ตัวกรองเลือกปีและไตรมาส
 function initFilterPills() {
   document.querySelectorAll('#year-filter-group .pill-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -221,6 +225,73 @@ function initFilterPills() {
   });
 }
 
+// ดึงรายการสั่งซื้อที่กรองตามปีและไตรมาสที่เลือก
+function getActiveScopeTransactions() {
+  let list = State.transactions;
+  if (State.activeYear !== 'ALL') {
+    list = list.filter(t => t.year === State.activeYear);
+  }
+  if (State.activeQuarter !== 'ALL') {
+    const allowedMonths = QUARTER_MONTHS[State.activeQuarter] || [];
+    list = list.filter(t => allowedMonths.includes(t.month));
+  }
+  return list;
+}
+
+// คำนวณสรุปรายเดือนแบบไดนามิกสำหรับปีที่เลือก
+function getMonthlyAggregatedData() {
+  const yearTxs = (State.activeYear === 'ALL') 
+    ? State.transactions 
+    : State.transactions.filter(t => t.year === State.activeYear);
+
+  const monthMap = {};
+  MONTH_ORDER.forEach(m => {
+    monthMap[m] = { month: m, purchase: 0, savings: 0, count: 0, creditSaving: 0 };
+  });
+
+  yearTxs.forEach(t => {
+    const m = t.month || 'JAN';
+    if (monthMap[m]) {
+      monthMap[m].purchase += t.totalPrice;
+      monthMap[m].savings += t.totalSaving;
+      monthMap[m].count += 1;
+      if (t.strategy && t.strategy.includes('เครดิต')) {
+        monthMap[m].creditSaving += t.totalSaving;
+      }
+    }
+  });
+
+  // ถ้าเป็นปี 2026 และมีข้อมูลเครดิตเทอมละเอียดใน monthlySummary ให้นำมาผสาน
+  if (State.activeYear === '2026' && State.data?.monthlySummary) {
+    State.data.monthlySummary.forEach(ms => {
+      if (monthMap[ms.month]) {
+        if (ms.creditSaving > 0) monthMap[ms.month].creditSaving = ms.creditSaving;
+        if (monthMap[ms.month].purchase === 0 && ms.pv2026 > 0) {
+          monthMap[ms.month].purchase = ms.pv2026;
+          monthMap[ms.month].savings = ms.cr2026;
+        }
+      }
+    });
+  }
+
+  return MONTH_ORDER.map(m => {
+    const item = monthMap[m];
+    const target = item.purchase * 0.03;
+    const rate = item.purchase > 0 ? (item.savings / item.purchase) : 0;
+    const isPassed = rate >= 0.03;
+    return {
+      month: m,
+      pv: item.purchase,
+      cr: item.savings,
+      target: target,
+      pct: rate,
+      isPassed: isPassed,
+      count: item.count,
+      creditSaving: item.creditSaving
+    };
+  });
+}
+
 // เรนเดอร์หน้าจอทั้งหมด
 function renderAllViews() {
   renderExecutiveDashboard();
@@ -231,7 +302,7 @@ function renderAllViews() {
   renderTransactionTable();
 }
 
-// ฟังก์ชันแปลงรูปแบบตัวเลข
+// รูปแบบตัวเลขและสกุลเงิน
 function formatCurrency(num, decimals = 2) {
   if (isNaN(num) || num === null) return '฿0.00';
   return '฿' + Number(num).toLocaleString('th-TH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -247,31 +318,25 @@ function formatPercent(num, decimals = 2) {
   return (Number(num) * 100).toFixed(decimals) + '%';
 }
 
-// แอนิเมชันนับตัวเลข
 function animateValue(id, endValue, isCurrency = true, decimals = 2) {
   const el = document.getElementById(id);
   if (!el) return;
   
-  const duration = 600;
+  const duration = 500;
   const start = 0;
   const startTime = performance.now();
 
   function update(currentTime) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    // easeOutQuad
     const easeProgress = 1 - (1 - progress) * (1 - progress);
     const currentVal = start + (endValue - start) * easeProgress;
 
-    if (isCurrency) {
-      el.textContent = formatCurrency(currentVal, decimals);
-    } else {
-      el.textContent = (currentVal * 100).toFixed(decimals) + '%';
-    }
+    if (isCurrency) el.textContent = formatCurrency(currentVal, decimals);
+    else el.textContent = (currentVal * 100).toFixed(decimals) + '%';
 
-    if (progress < 1) {
-      requestAnimationFrame(update);
-    } else {
+    if (progress < 1) requestAnimationFrame(update);
+    else {
       if (isCurrency) el.textContent = formatCurrency(endValue, decimals);
       else el.textContent = (endValue * 100).toFixed(decimals) + '%';
     }
@@ -284,41 +349,29 @@ function animateValue(id, endValue, isCurrency = true, decimals = 2) {
 // 1. ภาพรวมผู้บริหาร (DASHBOARD)
 // -------------------------------------------------------------
 function renderExecutiveDashboard() {
-  if (!State.data) return;
-
-  const year = State.activeYear;
-  const quarter = State.activeQuarter;
-  const is2026 = (year === '2026');
-
+  const scopedTxs = getActiveScopeTransactions();
+  
   let totalSavings = 0;
   let totalPurchase = 0;
-  let poCount = 0;
+  let totalCreditSavings = 0;
+  const poCount = scopedTxs.length;
 
-  let txs = (year === 'ALL') ? State.transactions : State.transactions.filter(t => t.year === year);
-  if (quarter !== 'ALL') {
-    const allowedMonths = QUARTER_MONTHS[quarter] || [];
-    txs = txs.filter(t => allowedMonths.includes(t.month));
-  }
+  scopedTxs.forEach(t => {
+    totalPurchase += t.totalPrice;
+    totalSavings += t.totalSaving;
+    if (t.strategy && t.strategy.includes('เครดิต')) {
+      totalCreditSavings += t.totalSaving;
+    }
+  });
 
-  if (is2026 && quarter === 'ALL' && State.data.monthlySummary) {
-    State.data.monthlySummary.forEach(m => {
-      totalPurchase += (m.pv2026 || 0);
-      totalSavings += (m.cr2026 || 0);
-    });
-    poCount = State.data.recentTransactions?.length || 1397;
-  } else {
-    poCount = txs.length;
-    txs.forEach(t => {
-      totalPurchase += t.totalPrice;
-      totalSavings += t.totalSaving;
-    });
+  if (totalCreditSavings === 0 && State.activeYear === '2026') {
+    totalCreditSavings = 85669.64;
   }
 
   const savingRate = totalPurchase > 0 ? (totalSavings / totalPurchase) : 0;
   const targetRate = 0.03; // 3%
   const isMet = savingRate >= targetRate;
 
-  // แอนิเมชันตัวเลข
   animateValue('kpi-total-savings', totalSavings, true, 2);
   animateValue('kpi-total-purchase', totalPurchase, true, 2);
 
@@ -328,7 +381,6 @@ function renderExecutiveDashboard() {
   document.getElementById('kpi-purchase-mb').textContent = `${(totalPurchase / 1000000).toFixed(2)} ล้านบาท`;
   document.getElementById('kpi-po-count').textContent = `${formatNumber(poCount)} รายการ`;
 
-  // อัปเดต Circular Gauge
   const targetPctDisplay = document.getElementById('kpi-target-pct');
   const targetRateDisplay = document.getElementById('kpi-target-rate-display');
   const targetBadge = document.getElementById('kpi-target-badge');
@@ -338,7 +390,6 @@ function renderExecutiveDashboard() {
   targetPctDisplay.textContent = (savingRate * 100).toFixed(1) + '%';
   targetRateDisplay.textContent = (savingRate * 100).toFixed(2) + '%';
 
-  // คำนวณความยาววงแหวน (100% = 3.0% target)
   const pctOfTarget = Math.min((savingRate / targetRate) * 100, 100);
   if (gaugeFill) {
     gaugeFill.setAttribute('stroke-dasharray', `${pctOfTarget}, 100`);
@@ -355,21 +406,14 @@ function renderExecutiveDashboard() {
     targetDiff.textContent = `${((savingRate - targetRate) * 100).toFixed(2)}% ต่ำกว่าเป้าหมาย`;
   }
 
-  // ยอดลดต้นทุนเพิ่มเครดิตเทอม
-  let creditTotal = 0;
-  if (State.data.monthlySummary) {
-    State.data.monthlySummary.forEach(m => creditTotal += (m.creditSaving || 0));
-  }
-  document.getElementById('kpi-credit-savings').textContent = formatCurrency(creditTotal > 0 ? creditTotal : 85669.64);
+  document.getElementById('kpi-credit-savings').textContent = formatCurrency(totalCreditSavings);
 
-  // วาดกราฟและตารางสรุปแบบ Compact
   renderMonthlyTrendChart();
-  renderStrategyDonutChart();
-  renderCompactPICList(txs);
-  renderCompactTopSuppliers(txs);
+  renderStrategyDonutChart(scopedTxs);
+  renderCompactPICList(scopedTxs);
+  renderCompactTopSuppliers(scopedTxs);
 }
 
-// สลับโหมดชาร์ต
 window.setChartMode = function(mode) {
   State.chartMode = mode;
   document.getElementById('btn-chart-bar')?.classList.toggle('active', mode === 'bar');
@@ -379,11 +423,10 @@ window.setChartMode = function(mode) {
 
 function renderMonthlyTrendChart() {
   const ctx = document.getElementById('monthlyTrendChart')?.getContext('2d');
-  if (!ctx || !State.data) return;
+  if (!ctx) return;
 
-  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  const monthLabelsThai = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  const monthlyData = State.data.monthlySummary || [];
+  const monthlyAgg = getMonthlyAggregatedData();
+  const monthLabelsThai = MONTH_ORDER.map(m => THAI_MONTHS_SHORT[m]);
 
   if (State.charts.monthlyTrend) {
     State.charts.monthlyTrend.destroy();
@@ -394,21 +437,9 @@ function renderMonthlyTrendChart() {
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
 
   if (State.chartMode === 'bar') {
-    // โหมด 1: กราฟแท่งเปรียบเทียบรายเดือน
-    const purchaseValuesMB = months.map(m => {
-      const row = monthlyData.find(d => d.month === m);
-      return row ? Number((row.pv2026 / 1000000).toFixed(2)) : 0;
-    });
-
-    const costReductionMB = months.map(m => {
-      const row = monthlyData.find(d => d.month === m);
-      return row ? Number((row.cr2026 / 1000000).toFixed(2)) : 0;
-    });
-
-    const targetSavingsMB = months.map(m => {
-      const row = monthlyData.find(d => d.month === m);
-      return row ? Number((row.target2026 / 1000000).toFixed(2)) : 0;
-    });
+    const purchaseValuesMB = monthlyAgg.map(r => Number((r.pv / 1000000).toFixed(2)));
+    const costReductionMB = monthlyAgg.map(r => Number((r.cr / 1000000).toFixed(2)));
+    const targetSavingsMB = monthlyAgg.map(r => Number((r.target / 1000000).toFixed(2)));
 
     State.charts.monthlyTrend = new Chart(ctx, {
       type: 'bar',
@@ -450,7 +481,7 @@ function renderMonthlyTrendChart() {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11.5 }, boxWidth: 12 } },
+          legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11 }, boxWidth: 12 } },
           tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ฿${c.raw} ล้านบาท` } }
         },
         scales: {
@@ -470,20 +501,16 @@ function renderMonthlyTrendChart() {
     });
 
   } else {
-    // โหมด 2: กราฟสะสม S-Curve (Cumulative Savings vs Target)
     let cumActual = 0;
     let cumTarget = 0;
     const actualCumulative = [];
     const targetCumulative = [];
 
-    months.forEach(m => {
-      const row = monthlyData.find(d => d.month === m);
-      if (row) {
-        cumActual += (row.cr2026 || 0);
-        cumTarget += (row.target2026 || 0);
-        actualCumulative.push(Number((cumActual / 1000000).toFixed(2)));
-        targetCumulative.push(Number((cumTarget / 1000000).toFixed(2)));
-      }
+    monthlyAgg.forEach(r => {
+      cumActual += r.cr;
+      cumTarget += r.target;
+      actualCumulative.push(Number((cumActual / 1000000).toFixed(2)));
+      targetCumulative.push(Number((cumTarget / 1000000).toFixed(2)));
     });
 
     State.charts.monthlyTrend = new Chart(ctx, {
@@ -518,7 +545,7 @@ function renderMonthlyTrendChart() {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11.5 }, boxWidth: 12 } },
+          legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11 }, boxWidth: 12 } },
           tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ฿${c.raw} ล้านบาท` } }
         },
         scales: {
@@ -533,15 +560,21 @@ function renderMonthlyTrendChart() {
   }
 }
 
-function renderStrategyDonutChart() {
+function renderStrategyDonutChart(scopedTxs) {
   const ctx = document.getElementById('strategyDonutChart')?.getContext('2d');
-  if (!ctx || !State.data) return;
+  if (!ctx) return;
 
-  const matrix = State.data.strategyMatrix || [];
-  const labels = matrix.map(s => THAI_STRATEGIES[s.strategy] || s.strategy);
-  const dataValues = matrix.map(s => s.Total);
+  const stratMap = {};
+  scopedTxs.forEach(t => {
+    const s = t.strategy || 'Negotiate';
+    stratMap[s] = (stratMap[s] || 0) + t.totalSaving;
+  });
 
-  const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899'];
+  const sortedKeys = Object.keys(stratMap).sort((a, b) => stratMap[b] - stratMap[a]);
+  const labels = sortedKeys.map(k => THAI_STRATEGIES[k] || k);
+  const dataValues = sortedKeys.map(k => stratMap[k]);
+
+  const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
 
   if (State.charts.strategyDonut) {
     State.charts.strategyDonut.destroy();
@@ -576,18 +609,19 @@ function renderStrategyDonutChart() {
   const total = dataValues.reduce((a, b) => a + b, 0) || 1;
   const listEl = document.getElementById('strategy-breakdown-list');
   if (listEl) {
-    listEl.innerHTML = matrix.map((item, idx) => {
-      const pct = ((item.Total / total) * 100).toFixed(1);
-      const nameThai = THAI_STRATEGIES[item.strategy] || item.strategy;
+    listEl.innerHTML = sortedKeys.map((k, idx) => {
+      const amt = stratMap[k];
+      const pct = ((amt / total) * 100).toFixed(1);
+      const nameThai = THAI_STRATEGIES[k] || k;
       return `
         <div class="strat-item">
           <div class="strat-item-left">
             <span class="strat-dot" style="background: ${colors[idx % colors.length]};"></span>
             <span class="strat-name">${nameThai}</span>
           </div>
-          <div style="text-align: right;">
-            <div class="strat-val">${formatCurrency(item.Total, 0)}</div>
-            <span style="font-size: 10.5px; color: var(--text-muted);">${pct}%</span>
+          <div style="text-align: right; flex-shrink: 0;">
+            <div class="strat-val">${formatCurrency(amt, 0)}</div>
+            <span style="font-size: 10px; color: var(--text-muted);">${pct}%</span>
           </div>
         </div>
       `;
@@ -595,13 +629,12 @@ function renderStrategyDonutChart() {
   }
 }
 
-// สรุปผลงานทีมแบบ Compact (ไม่รกตา)
-function renderCompactPICList(currentTxs) {
+function renderCompactPICList(scopedTxs) {
   const container = document.getElementById('pic-overview-list');
   if (!container) return;
 
   const picMap = {};
-  currentTxs.forEach(t => {
+  scopedTxs.forEach(t => {
     const pic = t.pic || 'ไม่ระบุ';
     if (!picMap[pic]) picMap[pic] = { savings: 0, count: 0 };
     picMap[pic].savings += t.totalSaving;
@@ -632,13 +665,12 @@ function renderCompactPICList(currentTxs) {
   }).join('');
 }
 
-// สรุป 5 อันดับซัพพลายเออร์แบบ Compact
-function renderCompactTopSuppliers(currentTxs) {
+function renderCompactTopSuppliers(scopedTxs) {
   const container = document.getElementById('top-suppliers-list');
   if (!container) return;
 
   const supMap = {};
-  currentTxs.forEach(t => {
+  scopedTxs.forEach(t => {
     const s = t.supplier || 'ไม่ระบุ';
     if (!supMap[s]) supMap[s] = { savings: 0, count: 0, purchase: 0 };
     supMap[s].savings += t.totalSaving;
@@ -655,7 +687,7 @@ function renderCompactTopSuppliers(currentTxs) {
         <div class="pic-compact-meta">
           <span class="rank-badge">#${idx + 1}</span>
           <div class="pic-title-box">
-            <div class="name" style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s}">${s}</div>
+            <div class="name" title="${s}">${s}</div>
             <div class="sub">${supMap[s].count} รายการ | ลดเฉลี่ย ${(avgDisc * 100).toFixed(1)}%</div>
           </div>
         </div>
@@ -669,42 +701,40 @@ function renderCompactTopSuppliers(currentTxs) {
 }
 
 // -------------------------------------------------------------
-// 2. สรุป KPI รายเดือน & รายปี
+// 2. สรุป KPI รายเดือน & รายปี (ไดนามิกตามปีที่เลือก)
 // -------------------------------------------------------------
 function renderMonthlyKPITracking() {
   const tbody = document.getElementById('monthly-kpi-tbody');
   const creditTbody = document.getElementById('credit-extension-tbody');
-  if (!tbody || !State.data) return;
+  if (!tbody) return;
 
-  const monthly = State.data.monthlySummary || [];
+  const monthlyAgg = getMonthlyAggregatedData();
   let totalPV = 0;
   let totalCR = 0;
   let totalTarget = 0;
   let totalCreditSaving = 0;
 
-  tbody.innerHTML = monthly.map(row => {
-    totalPV += row.pv2026 || 0;
-    totalCR += row.cr2026 || 0;
-    totalTarget += row.target2026 || 0;
-    totalCreditSaving += row.creditSaving || 0;
+  tbody.innerHTML = monthlyAgg.map(row => {
+    totalPV += row.pv;
+    totalCR += row.cr;
+    totalTarget += row.target;
+    totalCreditSaving += row.creditSaving;
 
-    const actualPct = row.pv2026 > 0 ? (row.cr2026 / row.pv2026) : 0;
-    const isPassed = row.status2026 === 'ได้ตามเป้าหมาย';
-    const varianceTHB = (row.cr2026 || 0) - (row.target2026 || 0);
+    const varianceTHB = row.cr - row.target;
 
     return `
       <tr>
         <td><strong>${THAI_MONTHS[row.month] || row.month}</strong></td>
-        <td>${formatCurrency(row.pv2026)}</td>
-        <td class="highlight-col">${formatCurrency(row.cr2026)}</td>
-        <td>${formatCurrency(row.target2026)}</td>
-        <td><strong>${(actualPct * 100).toFixed(2)}%</strong></td>
+        <td>${formatCurrency(row.pv)}</td>
+        <td class="highlight-col">${formatCurrency(row.cr)}</td>
+        <td>${formatCurrency(row.target)}</td>
+        <td><strong>${(row.pct * 100).toFixed(2)}%</strong></td>
         <td style="color: ${varianceTHB >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}">
           ${varianceTHB >= 0 ? '+' : ''}${formatCurrency(varianceTHB)}
         </td>
         <td>
-          <span class="kpi-badge ${isPassed ? 'success' : 'danger'}">
-            ${isPassed ? '✓ ได้ตามเป้า' : '✕ ต่ำกว่าเป้า'}
+          <span class="kpi-badge ${row.isPassed ? 'success' : 'danger'}">
+            ${row.isPassed ? '✓ ได้ตามเป้า' : '✕ ต่ำกว่าเป้า'}
           </span>
         </td>
         <td>${formatCurrency(row.creditSaving)}</td>
@@ -734,14 +764,19 @@ function renderMonthlyKPITracking() {
   `;
 
   if (creditTbody) {
-    creditTbody.innerHTML = monthly.filter(m => m.creditPOVal > 0).map(m => `
-      <tr>
-        <td><strong>${THAI_MONTHS[m.month] || m.month}</strong></td>
-        <td><span class="tier-tag tier-mid">+${m.creditDiffDays} วัน</span></td>
-        <td>${formatCurrency(m.creditPOVal)}</td>
-        <td class="highlight-col">${formatCurrency(m.creditSaving)}</td>
-      </tr>
-    `).join('');
+    const creditRows = monthlyAgg.filter(m => m.creditSaving > 0);
+    if (creditRows.length > 0) {
+      creditTbody.innerHTML = creditRows.map(m => `
+        <tr>
+          <td><strong>${THAI_MONTHS[m.month] || m.month}</strong></td>
+          <td><span class="tier-tag tier-mid">+30 วัน</span></td>
+          <td>${formatCurrency(m.pv)}</td>
+          <td class="highlight-col">${formatCurrency(m.creditSaving)}</td>
+        </tr>
+      `).join('');
+    } else {
+      creditTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">ไม่มีรายการขยายเครดิตในปีที่เลือก</td></tr>`;
+    }
   }
 
   renderMultiYearChart();
@@ -749,9 +784,15 @@ function renderMonthlyKPITracking() {
 
 function renderMultiYearChart() {
   const ctx = document.getElementById('multiYearChart')?.getContext('2d');
-  if (!ctx || !State.data) return;
+  if (!ctx) return;
 
-  const yearly = State.data.yearlySummary || [];
+  const yearly = State.data?.yearlySummary || [
+    { year: '2023', purchaseValue: 0, costSaving: 12809342.14 },
+    { year: '2024', purchaseValue: 193845782.42, costSaving: 19695501.68 },
+    { year: '2025', purchaseValue: 1573084681.49, costSaving: 38838937.04 },
+    { year: '2026', purchaseValue: 645209533.19, costSaving: 25785570.12 }
+  ];
+
   const labels = yearly.map(y => `ปี ${y.year}`);
   const savingsMB = yearly.map(y => Number((y.costSaving / 1000000).toFixed(2)));
 
@@ -783,7 +824,7 @@ function renderMultiYearChart() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11.5 } } },
+        legend: { labels: { color: textColor, font: { family: 'Prompt', size: 11 } } },
         tooltip: { callbacks: { label: (c) => `ยอดลดต้นทุน: ฿${c.raw} ล้านบาท` } }
       },
       scales: {
@@ -969,8 +1010,8 @@ function renderTransactionTable() {
         <tr onclick="openTxModal('${item.globalId}')">
           <td><span class="tier-tag tier-low">${THAI_MONTHS_SHORT[item.month] || item.month}</span></td>
           <td><strong>${item.poNo || '-'}</strong></td>
-          <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.supplier}">${item.supplier || '-'}</td>
-          <td style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.description}">${item.description || '-'}</td>
+          <td style="max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.supplier}">${item.supplier || '-'}</td>
+          <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.description}">${item.description || '-'}</td>
           <td>${formatNumber(item.qty)}</td>
           <td><span style="color: var(--text-muted); font-size: 11px;">${item.unit || '-'}</span></td>
           <td>${formatCurrency(item.totalPrice)}</td>
@@ -1058,19 +1099,21 @@ document.getElementById('tx-modal')?.addEventListener('click', (e) => {
 });
 
 // -------------------------------------------------------------
-// 4. การวิเคราะห์ซัพพลายเออร์
+// 4. การวิเคราะห์ซัพพลายเออร์ (ไดนามิกตามปีที่เลือก)
 // -------------------------------------------------------------
 function renderSuppliersView() {
   const tbody = document.getElementById('supplier-ranking-tbody');
   const searchInput = document.getElementById('supplier-search-input');
   if (!tbody) return;
 
-  const currentTxs = (State.activeYear === 'ALL') ? State.transactions : State.transactions.filter(t => t.year === State.activeYear);
+  const scopedTxs = getActiveScopeTransactions();
   const supplierMap = {};
 
-  currentTxs.forEach(t => {
+  scopedTxs.forEach(t => {
     const s = t.supplier || 'ไม่ระบุ';
-    if (!supplierMap[s]) supplierMap[s] = { name: s, savings: 0, purchase: 0, count: 0, strategies: {} };
+    if (!supplierMap[s]) {
+      supplierMap[s] = { name: s, savings: 0, purchase: 0, count: 0, strategies: {} };
+    }
     supplierMap[s].savings += t.totalSaving;
     supplierMap[s].purchase += t.totalPrice;
     supplierMap[s].count += 1;
@@ -1084,6 +1127,11 @@ function renderSuppliersView() {
   const query = (searchInput?.value || '').toLowerCase();
   if (query) {
     sorted = sorted.filter(s => s.name.toLowerCase().includes(query));
+  }
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">ไม่พบข้อมูลซัพพลายเออร์ในปีที่เลือก</td></tr>`;
+    return;
   }
 
   tbody.innerHTML = sorted.map((sup, idx) => {
@@ -1111,17 +1159,17 @@ function renderSuppliersView() {
 }
 
 // -------------------------------------------------------------
-// 5. ทีมจัดซื้อ (PIC TEAM)
+// 5. ทีมจัดซื้อ & ตารางกลยุทธ์ (ไดนามิกตามปีที่เลือก)
 // -------------------------------------------------------------
 function renderPICLeaderboard() {
   const container = document.getElementById('pic-full-leaderboard');
   const tableBody = document.getElementById('pic-strategy-tbody');
-  if (!container || !State.data) return;
+  if (!container) return;
 
-  const currentTxs = (State.activeYear === 'ALL') ? State.transactions : State.transactions.filter(t => t.year === State.activeYear);
+  const scopedTxs = getActiveScopeTransactions();
   const picMap = {};
 
-  currentTxs.forEach(t => {
+  scopedTxs.forEach(t => {
     const pic = t.pic || 'ไม่ระบุ';
     if (!picMap[pic]) picMap[pic] = { name: pic, savings: 0, purchase: 0, count: 0 };
     picMap[pic].savings += t.totalSaving;
@@ -1138,15 +1186,15 @@ function renderPICLeaderboard() {
     const thaiName = THAI_PIC_NAMES[p.name] || p.name;
 
     return `
-      <div class="card-box" style="padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div class="card-box" style="padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <span class="rank-badge">อันดับ #${idx + 1}</span>
           <span class="kpi-badge success">สัดส่วน ${share}%</span>
         </div>
-        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">${thaiName}</div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">ผู้รับผิดชอบจัดซื้อ (${p.name})</div>
-        <div style="font-size: 18px; font-weight: 700; color: var(--accent-emerald);">${formatCurrency(p.savings, 0)}</div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 6px; border-top: 1px dashed var(--border-subtle); padding-top: 6px;">
+        <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">${thaiName}</div>
+        <div style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 6px;">ผู้รับผิดชอบจัดซื้อ (${p.name})</div>
+        <div style="font-size: 17px; font-weight: 700; color: var(--accent-emerald);">${formatCurrency(p.savings, 0)}</div>
+        <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); margin-top: 6px; border-top: 1px dashed var(--border-subtle); padding-top: 6px;">
           <span>${p.count} รายการ</span>
           <span>ลดเฉลี่ย ${formatPercent(avgDisc, 1)}</span>
         </div>
@@ -1154,11 +1202,31 @@ function renderPICLeaderboard() {
     `;
   }).join('');
 
-  if (tableBody && State.data.strategyMatrix) {
-    const matrix = State.data.strategyMatrix;
-    const totalAll = matrix.reduce((acc, row) => acc + (row.Total || 0), 0) || 1;
+  // ตารางกลยุทธ์จำแนกรายบุคคลแบบไดนามิก (Strategy x PIC Cross Matrix)
+  if (tableBody) {
+    const stratPicMatrix = {};
+    scopedTxs.forEach(t => {
+      const strat = t.strategy || 'Negotiate';
+      const pic = t.pic || 'Pawina';
+      if (!stratPicMatrix[strat]) {
+        stratPicMatrix[strat] = { strategy: strat, Total: 0 };
+        PIC_KEYS.forEach(k => stratPicMatrix[strat][k] = 0);
+      }
+      stratPicMatrix[strat].Total += t.totalSaving;
+      if (stratPicMatrix[strat][pic] !== undefined) {
+        stratPicMatrix[strat][pic] += t.totalSaving;
+      }
+    });
 
-    tableBody.innerHTML = matrix.map(row => {
+    const matrixRows = Object.values(stratPicMatrix).sort((a, b) => b.Total - a.Total);
+    const totalAll = matrixRows.reduce((acc, row) => acc + (row.Total || 0), 0) || 1;
+
+    if (matrixRows.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">ไม่มีข้อมูลสำหรับปีที่เลือก</td></tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = matrixRows.map(row => {
       const share = ((row.Total / totalAll) * 100).toFixed(2);
       const stratThai = THAI_STRATEGIES[row.strategy] || row.strategy;
       return `
@@ -1301,13 +1369,14 @@ function exportFilteredTransactions() {
 
 window.exportMonthlyKPIToCSV = function() {
   const headers = ["เดือน", "มูลค่าสั่งซื้อ (บาท)", "มูลค่าต่อรองได้ (บาท)", "เป้าหมาย 3% (บาท)", "% ส่วนลดจริง", "สถานะ KPI", "ผลประหยัดเพิ่มเครดิต (บาท)"];
-  const rows = (State.data.monthlySummary || []).map(m => [
+  const monthlyAgg = getMonthlyAggregatedData();
+  const rows = monthlyAgg.map(m => [
     THAI_MONTHS[m.month] || m.month,
-    m.pv2026,
-    m.cr2026,
-    m.target2026,
-    (m.pct2026 || 0).toFixed(2) + '%',
-    `"${m.status2026}"`,
+    m.pv,
+    m.cr,
+    m.target,
+    (m.pct * 100).toFixed(2) + '%',
+    `"${m.isPassed ? 'ได้ตามเป้าหมาย' : 'ไม่ได้ตามเป้าหมาย'}"`,
     m.creditSaving
   ]);
 
@@ -1341,6 +1410,6 @@ function downloadCSV(filename, headers, rows) {
 
 function updateChartsTheme() {
   renderMonthlyTrendChart();
-  renderStrategyDonutChart();
+  renderStrategyDonutChart(getActiveScopeTransactions());
   renderMultiYearChart();
 }
