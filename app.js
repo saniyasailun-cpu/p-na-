@@ -1481,19 +1481,129 @@ function initGoogleSheetSync() {
   }
 }
 
-function extractGoogleSheetId(input) {
-  if (!input) return '';
+function extractGoogleSheetInfo(input) {
+  if (!input) return { sheetId: '', gid: '' };
   const trimmed = input.trim();
-  const match = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  if (match && match[1]) return match[1];
-  return trimmed; // อาจเป็น Sheet ID โดยตรง
+  
+  // Extract Sheet ID
+  let sheetId = trimmed;
+  const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (idMatch && idMatch[1]) {
+    sheetId = idMatch[1];
+  }
+
+  // Extract GID if user passed specific tab URL
+  let gid = '';
+  const gidMatch = trimmed.match(/[#&]gid=([0-9]+)/);
+  if (gidMatch && gidMatch[1]) {
+    gid = gidMatch[1];
+  }
+
+  return { sheetId, gid };
+}
+
+// ตัวแปลงผลลัพธ์ Google Visualization API เป็น Array of Objects
+function parseGvizTextToRows(gvizText) {
+  const jsonStart = gvizText.indexOf('{');
+  const jsonEnd = gvizText.lastIndexOf('}');
+  if (jsonStart === -1 || jsonEnd === -1) throw new Error("รูปแบบข้อมูล Google Sheet ไม่ถูกต้อง");
+  
+  const rawJson = gvizText.substring(jsonStart, jsonEnd + 1);
+  const data = JSON.parse(rawJson);
+  
+  if (data.status === 'error') {
+    throw new Error(data.errors?.[0]?.detailed_message || data.errors?.[0]?.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลชีต');
+  }
+
+  if (!data.table || !data.table.rows) return [];
+
+  // อ่านชื่อคอลัมน์ (หัวตาราง) จาก cols หรือจาก row แรก
+  const colLabels = (data.table.cols || []).map(c => (c ? (c.label || c.id || '').trim() : ''));
+  
+  const rows = [];
+  data.table.rows.forEach(r => {
+    if (!r || !r.c) return;
+    const rowObj = {};
+    let hasValue = false;
+
+    r.c.forEach((cell, idx) => {
+      const colName = colLabels[idx] || `Col_${idx}`;
+      const val = cell ? (cell.v !== null && cell.v !== undefined ? cell.v : (cell.f || '')) : '';
+      rowObj[colName] = val;
+      if (val !== '') hasValue = true;
+    });
+
+    if (hasValue) rows.push(rowObj);
+  });
+
+  return rows;
+}
+
+// แปลงแถวจาก Sheet ให้เป็นโครงสร้างมาตรฐานของระบบ
+function normalizeSheetRow(r, idx, sourceSheet) {
+  const getVal = (...keys) => {
+    for (const k of keys) {
+      if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return r[k];
+      // ตรวจสอบแบบ case-insensitive
+      const foundKey = Object.keys(r).find(x => x.toLowerCase().trim() === k.toLowerCase().trim());
+      if (foundKey && r[foundKey] !== undefined && r[foundKey] !== null && String(r[foundKey]).trim() !== '') {
+        return r[foundKey];
+      }
+    }
+    return '';
+  };
+
+  const yr = String(getVal('Year', 'year', 'ปี', 'พ.ศ.') || '2026');
+  let mo = String(getVal('Month', 'month', 'เดือน') || 'JAN').toUpperCase().trim();
+  if (mo.length > 3) mo = mo.slice(0, 3);
+
+  const po = String(getVal('PO No.', 'PO No', 'poNo', 'PO', 'เลขที่ PO', 'เลขที่ใบสั่งซื้อ') || `PO-${idx + 1}`).trim();
+  const supp = String(getVal('Supplier', 'supplier', 'ซัพพลายเออร์', 'ชื่อคู่ค้า', 'ผู้ขาย') || 'ไม่ระบุ').trim();
+  const desc = String(getVal('Item Description', 'description', 'รายละเอียดสินค้า/บริการ', 'รายละเอียด') || '').trim();
+  
+  const qty = parseFloat(getVal('Qty', 'qty', 'จำนวน', 'ปริมาณ') || 0) || 0;
+  const unit = String(getVal('Unit', 'unit', 'หน่วย', 'หน่วยนับ') || 'EA').trim();
+  const minPrice = parseFloat(getVal('Min Unit Price', 'minUnitPrice', 'ราคาต่อหน่วยเดิม', 'ราคาต่อหน่วย') || 0) || 0;
+  
+  let totalPrice = parseFloat(getVal('Total Price', 'totalPrice', 'ราคารวม (บาท)', 'ราคารวม') || 0) || 0;
+  if (totalPrice === 0 && qty > 0 && minPrice > 0) totalPrice = qty * minPrice;
+
+  const negPrice = parseFloat(getVal('Negotiated Unit Price', 'negotiatedUnitPrice', 'ราคาที่ต่อรองได้') || minPrice) || minPrice;
+  
+  let unitDiff = parseFloat(getVal('Unit Difference', 'unitDifference', 'ผลต่างต่อหน่วย') || (minPrice - negPrice)) || 0;
+  let totalSaving = parseFloat(getVal('Total Saving', 'totalSaving', 'รวมที่ต่อรองได้ (บาท)', 'รวมที่ต่อรองได้', 'ยอดลดต้นทุน') || (unitDiff * qty)) || 0;
+
+  const pctDisc = totalPrice > 0 ? (totalSaving / totalPrice) : 0;
+  const method = String(getVal('Method', 'method', 'กลยุทธ์', 'วิธีการ', 'Strategy') || 'Negotiate').trim();
+  const pic = String(getVal('PIC', 'pic', 'ผู้รับผิดชอบ', 'ผู้จัดซื้อ') || 'ไม่ระบุ').trim();
+
+  return {
+    id: `${sourceSheet}-${idx + 1}`,
+    globalId: `${sourceSheet}-${idx + 1}`,
+    year: yr,
+    month: mo,
+    poNo: po,
+    supplier: supp,
+    description: desc,
+    qty: qty,
+    unit: unit,
+    minUnitPrice: minPrice,
+    totalPrice: totalPrice,
+    negotiatedUnitPrice: negPrice,
+    unitDifference: unitDiff,
+    totalSaving: totalSaving,
+    percentDiscount: pctDisc,
+    strategy: method,
+    method: method,
+    pic: pic
+  };
 }
 
 window.syncGoogleSheetNow = async function(showAlert = true) {
   const urlInput = document.getElementById('gsheet-url-input')?.value.trim() || '';
   const autoSync = document.getElementById('gsheet-auto-sync')?.checked ?? true;
 
-  const sheetId = extractGoogleSheetId(urlInput);
+  const { sheetId, gid } = extractGoogleSheetInfo(urlInput);
   if (!sheetId) {
     if (showAlert) {
       alert('กรุณากรอก Google Sheet URL หรือ Sheet ID ในหน้า "จัดการไฟล์ข้อมูล Excel"');
@@ -1508,84 +1618,66 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
 
   if (syncBtn) syncBtn.disabled = true;
   if (topbarLabel) topbarLabel.textContent = 'กำลังซิงค์...';
-  if (badge) badge.textContent = '⏳ กำลังดึงข้อมูลทั้งหมด...';
+  if (badge) badge.textContent = '⏳ กำลังดึงข้อมูลจาก Google Sheets...';
 
   try {
-    // 1. ดาวน์โหลดทั้ง Workbook ทุก Sheet ในรูปแบบ .xlsx
-    const xlsxUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
-    const res = await fetch(xlsxUrl);
-    
-    if (!res.ok) {
-      throw new Error(`ไม่สามารถเข้าถึง Google Sheet ได้ (Status: ${res.status})\nโปรดตรวจสอบว่าเปิดสิทธิ์แชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู" แล้วหรือยัง`);
-    }
-
-    const arrayBuffer = await res.arrayBuffer();
-    if (typeof XLSX === 'undefined') {
-      throw new Error('SheetJS library is not loaded');
-    }
-
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    console.log('📑 Loaded Sheets from Google Sheets:', workbook.SheetNames);
-
     let allTransactions = [];
+    
+    // รายชื่อแท็บที่ต้องการดึงข้อมูล
+    const targetTabs = gid ? [`gid=${gid}`] : ['sheet=Data', 'sheet=Improve%231', ''];
+    let successCount = 0;
+    let lastError = null;
 
-    // วนอ่านทุก Sheet ที่มีข้อมูลรายการ เช่น Data, Improve#1, หรือชีตแรก
-    workbook.SheetNames.forEach(sheetName => {
-      // ข้ามชีตที่ไม่ใช่ข้อมูลรายการ
-      if (sheetName.includes('สรุป') || sheetName.includes('Kaizen') || sheetName.includes('Set')) return;
+    for (const tabParam of targetTabs) {
+      const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&${tabParam}`;
+      try {
+        const res = await fetch(gvizUrl);
+        if (!res.ok) continue;
+        const text = await res.text();
+        const rows = parseGvizTextToRows(text);
 
-      const ws = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      if (rows && rows.length > 0) {
+        if (rows && rows.length > 0) {
+          const tabName = tabParam ? tabParam.replace('sheet=', '').replace('gid=', 'gid_') : 'Main';
+          rows.forEach((r, idx) => {
+            const tx = normalizeSheetRow(r, idx, tabName);
+            // ตรวจสอบว่าไม่ใช่แถวว่าง
+            if (tx.poNo || tx.supplier !== 'ไม่ระบุ' || tx.totalPrice > 0 || tx.totalSaving > 0) {
+              allTransactions.push(tx);
+            }
+          });
+          successCount++;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    // หาก GViz ดึงไม่สำเร็จ ลองดาวน์โหลดผ่าน CSV Export
+    if (allTransactions.length === 0) {
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+      const res = await fetch(csvUrl);
+      if (!res.ok) {
+        throw new Error(lastError ? lastError.message : `ไม่สามารถเชื่อมต่อได้ (Status: ${res.status}). กรุณาตรวจสอบว่า Google Sheet ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู"`);
+      }
+      const csvText = await res.text();
+      if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.read(csvText, { type: 'string' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
         rows.forEach((r, idx) => {
-          // ตรวจสอบว่าเป็นแถวรายการที่มีข้อมูลจริง
-          const yr = String(r['Year'] || r['year'] || r['ปี'] || '2026');
-          const mo = String(r['Month'] || r['month'] || r['เดือน'] || 'JAN').toUpperCase().slice(0, 3);
-          const po = String(r['PO No.'] || r['PO No'] || r['poNo'] || r['PO'] || '').trim();
-          const supp = String(r['Supplier'] || r['supplier'] || r['ซัพพลายเออร์'] || r['ชื่อคู่ค้า'] || '').trim();
-          const desc = String(r['Item Description'] || r['description'] || r['รายละเอียด'] || '').trim();
-          const qty = parseFloat(r['Qty'] || r['qty'] || r['จำนวน'] || 0) || 0;
-          const unit = String(r['Unit'] || r['unit'] || r['หน่วย'] || 'EA').trim();
-          const minPrice = parseFloat(r['Min Unit Price'] || r['minUnitPrice'] || 0) || 0;
-          const totalPrice = parseFloat(r['Total Price'] || r['totalPrice'] || (qty * minPrice) || 0) || 0;
-          const negPrice = parseFloat(r['Negotiated Unit Price'] || r['negotiatedUnitPrice'] || minPrice) || minPrice;
-          const unitDiff = parseFloat(r['Unit Difference'] || r['unitDifference'] || (minPrice - negPrice)) || 0;
-          const totalSaving = parseFloat(r['Total Saving'] || r['totalSaving'] || (unitDiff * qty)) || 0;
-          const pctDisc = totalPrice > 0 ? (totalSaving / totalPrice) : 0;
-          const method = String(r['Method'] || r['method'] || r['กลยุทธ์'] || 'Negotiate').trim();
-          const pic = String(r['PIC'] || r['pic'] || r['ผู้รับผิดชอบ'] || 'ไม่ระบุ').trim();
-
-          if (po || supp || totalSaving > 0 || totalPrice > 0) {
-            allTransactions.push({
-              id: `${sheetName}-${idx + 1}`,
-              globalId: `${sheetName}-${idx + 1}`,
-              year: yr,
-              month: mo,
-              poNo: po || `PO-${idx + 1}`,
-              supplier: supp || 'ไม่ระบุ',
-              description: desc,
-              qty: qty,
-              unit: unit,
-              minUnitPrice: minPrice,
-              totalPrice: totalPrice,
-              negotiatedUnitPrice: negPrice,
-              unitDifference: unitDiff,
-              totalSaving: totalSaving,
-              percentDiscount: pctDisc,
-              strategy: method,
-              method: method,
-              pic: pic
-            });
+          const tx = normalizeSheetRow(r, idx, 'CSV');
+          if (tx.poNo || tx.supplier !== 'ไม่ระบุ' || tx.totalPrice > 0 || tx.totalSaving > 0) {
+            allTransactions.push(tx);
           }
         });
       }
-    });
-
-    if (allTransactions.length === 0) {
-      throw new Error('ไม่พบข้อมูลรายการสั่งซื้อในไฟล์ Google Sheet');
     }
 
-    // อัปเดตข้อมูลในระบบ
+    if (allTransactions.length === 0) {
+      throw new Error('ไม่พบข้อมูลรายการสั่งซื้อใน Google Sheet\nโปรดตรวจสอบว่าเปิดสิทธิ์แชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู (Anyone with the link can view)" แล้วหรือยัง');
+    }
+
+    // อัปเดตข้อมูลในระบบแบบ Real-time
     State.transactions = allTransactions;
     filterTransactions();
     renderAllViews();
@@ -1593,7 +1685,7 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
 
-    // บันทึกการตั้งค่า
+    // บันทึกการตั้งค่าลง LocalStorage
     localStorage.setItem(GSHEET_STORAGE_KEY, JSON.stringify({
       url: urlInput,
       autoSync: autoSync,
@@ -1609,7 +1701,7 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
     }
 
     if (showAlert) {
-      alert(`✅ ซิงค์ข้อมูลสำเร็จ!\nโหลดข้อมูลจาก Google Sheet ทั้งหมด ${allTransactions.length.toLocaleString()} รายการ (จากทุกแท็บชีต)`);
+      alert(`✅ ซิงค์ข้อมูลสำเร็จ!\nโหลดข้อมูลจาก Google Sheet ทั้งหมด ${allTransactions.length.toLocaleString()} รายการเรียบร้อยแล้ว`);
     }
   } catch (err) {
     console.error('Google Sheet Sync Error:', err);
@@ -1621,7 +1713,7 @@ window.syncGoogleSheetNow = async function(showAlert = true) {
       topbarLabel.textContent = 'ซิงค์ไม่สำเร็จ';
     }
     if (showAlert) {
-      alert(`❌ ไม่สามารถซิงค์ข้อมูลได้:\n${err.message}\n\nคำแนะนำ: กรุณาตรวจสอบว่า Google Sheet เปิดแชร์เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู" แล้วหรือยัง`);
+      alert(`❌ ไม่สามารถซิงค์ข้อมูลได้:\n${err.message}\n\nคำแนะนำ:\n1. ตรวจสอบว่าเปิดแชร์ Google Sheet เป็น "ทุกคนที่มีลิงก์มีสิทธิ์ดู (Anyone with link can view)"\n2. ตรวจสอบว่าลิงก์ URL ถูกต้องหรือไม่`);
     }
   } finally {
     if (syncBtn) syncBtn.disabled = false;
